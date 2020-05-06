@@ -19,9 +19,12 @@
 package geth
 
 import (
+	"encoding/json"
 	"errors"
 	"math/big"
+	"reflect"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -251,6 +254,28 @@ type Interfaces struct {
 // NewInterfaces creates a slice of uninitialized interfaces.
 func NewInterfaces(size int) *Interfaces {
 	return &Interfaces{objects: make([]interface{}, size)}
+}
+
+// NewInterfacesFromJSON creates a new Interface slice that contains the
+// prototype of types defined in the input json.
+func NewInterfacesFromJSON(definition string, data *Interfaces) (*Interfaces, error) {
+	var field struct {
+		Inputs abi.Arguments
+	}
+	if err := json.Unmarshal([]byte(definition), &field); err != nil {
+		return nil, err
+	}
+	var out []interface{}
+	for _, in := range field.Inputs {
+		val := reflect.New(in.Type.GetType())
+		err := field.Inputs.UnpackTuple(val, data.objects)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, Interface{val})
+
+	}
+	return &Interfaces{out}, nil
 }
 
 // Size returns the number of interfaces in the slice.
