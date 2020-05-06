@@ -88,3 +88,19 @@ func TestInterfaceGetSet(t *testing.T) {
 		}
 	}
 }
+
+func TestInterfacesFromJSON(t *testing.T) {
+	args := NewInterfaces(2)
+	args1 := NewInterface()
+	args1.SetBigInt(&BigInt{big.NewInt(1)})
+	args.Set(0, args1)
+	args2 := NewInterface()
+	args2.SetBigInt(&BigInt{big.NewInt(2)})
+	args.Set(1, args2)
+
+	definition := "{\"inputs\" :[{ \"indexed\":false, \"name\":\"t\", \"type\":\"tuple\", \"components\":[{\"name\":\"a\", \"type\":\"uint256\"}, {\"name\":\"b\", \"type\":\"uint256\" }]}]}"
+	_, err := NewInterfacesFromJSON(definition, args)
+	if err != nil {
+		t.Error(err)
+	}
+}
