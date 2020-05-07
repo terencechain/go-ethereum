@@ -285,6 +285,30 @@ func NewInterfacesFromJSON(definition string, data *Interfaces) (*Interface, err
 	return &Interface{fld.Interface()}, nil
 }
 
+// NewInterfacesFromJSONDefault creates a new Interface slice that contains the
+// prototype of types defined in the input json.
+func NewInterfacesFromJSONDefault(definition string) (*Interface, error) {
+	var field struct {
+		Inputs abi.Arguments
+	}
+	if err := json.Unmarshal([]byte(definition), &field); err != nil {
+		return nil, err
+	}
+
+	var structFields []reflect.StructField
+	for _, in := range field.Inputs {
+		structFields = append(structFields, reflect.StructField{
+			Name: abi.ToCamelCase(in.Name), // reflect.StructOf will panic for any exported field.
+			Type: in.Type.GetType(),
+			Tag:  reflect.StructTag("json:\"" + in.Name + "\""),
+		})
+	}
+	tuple := reflect.New(reflect.StructOf(structFields))
+	fld := tuple.Elem().FieldByIndex([]int{0})
+
+	return &Interface{&fld}, nil
+}
+
 // Size returns the number of interfaces in the slice.
 func (i *Interfaces) Size() int {
 	return len(i.objects)
