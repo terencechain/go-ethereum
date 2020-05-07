@@ -282,7 +282,7 @@ func NewInterfacesFromJSON(definition string, data *Interfaces) (*Interface, err
 		fieldValue.Set(val)
 	}
 
-	return &Interface{tuple.Interface()}, nil
+	return &Interface{fld.Interface()}, nil
 }
 
 // Size returns the number of interfaces in the slice.
