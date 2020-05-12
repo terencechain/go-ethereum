@@ -275,7 +275,7 @@ func NewInterfacesFromJSON(definition string, data *Interfaces) (*Interface, err
 		})
 	}
 	tuple := reflect.New(reflect.StructOf(structFields))
-	fld := tuple.Elem().FieldByIndex([]int{0})
+	fld := tuple.Elem().Field(0)
 	for idx, elem := range data.objects {
 		fieldValue := fld.Field(idx)
 		val := reflect.Indirect(reflect.ValueOf(elem))
@@ -304,7 +304,7 @@ func NewInterfacesFromJSONDefault(definition string) (*Interface, error) {
 		})
 	}
 	tuple := reflect.New(reflect.StructOf(structFields))
-	fld := tuple.Elem().FieldByIndex([]int{0})
+	fld := tuple.Elem().Field(0)
 
 	return &Interface{&fld}, nil
 }
