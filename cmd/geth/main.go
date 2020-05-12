@@ -254,9 +254,19 @@ func init() {
 	app.Flags = append(app.Flags, metricsFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
+		if _, err := os.Stat("unclean-shutdown"); err == nil {
+			fmt.Printf("Unclean shutdown detected\n")
+		} else {
+			if _, err := os.Create("unclean-shutdown"); err != nil {
+				panic("Could not create unclean-shutdown detection file")
+			}
+		}
 		return debug.Setup(ctx)
 	}
 	app.After = func(ctx *cli.Context) error {
+		if err := os.Remove("unclean-shutdown"); err != nil {
+			fmt.Printf("Could not remove unclean-shutdown detection file")
+		}
 		debug.Exit()
 		console.Stdin.Close() // Resets terminal mode.
 		return nil
