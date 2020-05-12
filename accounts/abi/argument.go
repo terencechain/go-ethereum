@@ -95,7 +95,7 @@ func (arguments Arguments) Unpack(v interface{}, data []byte) error {
 		return fmt.Errorf("abi: Unpack(no-values unmarshalled %T)", v)
 	}
 	if arguments.isTuple() {
-		return arguments.UnpackTuple(v, marshalledValues)
+		return arguments.unpackTuple(v, marshalledValues)
 	}
 	return arguments.unpackAtomic(v, marshalledValues[0])
 }
@@ -214,8 +214,8 @@ func (arguments Arguments) unpackAtomic(v interface{}, marshalledValues interfac
 	return unpack(&argument.Type, elem.Addr().Interface(), marshalledValues)
 }
 
-// UnpackTuple unpacks ( hexdata -> go ) a batch of values.
-func (arguments Arguments) UnpackTuple(v interface{}, marshalledValues []interface{}) error {
+// unpackTuple unpacks ( hexdata -> go ) a batch of values.
+func (arguments Arguments) unpackTuple(v interface{}, marshalledValues []interface{}) error {
 	var (
 		value          = reflect.ValueOf(v).Elem()
 		typ            = value.Type()
