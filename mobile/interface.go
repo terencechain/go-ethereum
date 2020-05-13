@@ -259,27 +259,20 @@ func NewInterfaces(size int) *Interfaces {
 // NewInterfacesFromJSON creates a new Interface slice that contains the
 // prototype of types defined in the input json.
 func NewInterfacesFromJSON(definition string, data *Interfaces) (*Interface, error) {
-	var field struct {
-		Inputs abi.Arguments
-	}
-	if err := json.Unmarshal([]byte(definition), &field); err != nil {
+	tuple, err := tupleFromJSON(definition)
+	if err != nil {
 		return nil, err
 	}
 
-	var structFields []reflect.StructField
-	for _, in := range field.Inputs {
-		structFields = append(structFields, reflect.StructField{
-			Name: abi.ToCamelCase(in.Name), // reflect.StructOf will panic for any exported field.
-			Type: in.Type.GetType(),
-			Tag:  reflect.StructTag("json:\"" + in.Name + "\""),
-		})
-	}
-	tuple := reflect.New(reflect.StructOf(structFields))
 	fld := tuple.Elem().Field(0)
 	for idx, elem := range data.objects {
 		fieldValue := fld.Field(idx)
-		val := reflect.Indirect(reflect.ValueOf(elem))
-		fieldValue.Set(val)
+		if fieldValue.IsValid() {
+			val := reflect.Indirect(reflect.ValueOf(elem))
+			fieldValue.Set(val)
+		} else {
+			return nil, errors.New("Could not find field, json does not match provided struct")
+		}
 	}
 
 	return &Interface{fld.Interface()}, nil
@@ -288,11 +281,22 @@ func NewInterfacesFromJSON(definition string, data *Interfaces) (*Interface, err
 // NewInterfacesFromJSONDefault creates a new Interface slice that contains the
 // prototype of types defined in the input json.
 func NewInterfacesFromJSONDefault(definition string) (*Interface, error) {
+	tuple, err := tupleFromJSON(definition)
+	if err != nil {
+		return nil, err
+	}
+
+	fld := tuple.Elem().Field(0)
+	return &Interface{fld.Addr().Interface()}, nil
+}
+
+// tupleFromJSON creates a new tuple as defined in the definition
+func tupleFromJSON(definition string) (reflect.Value, error) {
 	var field struct {
 		Inputs abi.Arguments
 	}
 	if err := json.Unmarshal([]byte(definition), &field); err != nil {
-		return nil, err
+		return reflect.Value{}, err
 	}
 
 	var structFields []reflect.StructField
@@ -303,10 +307,7 @@ func NewInterfacesFromJSONDefault(definition string) (*Interface, error) {
 			Tag:  reflect.StructTag("json:\"" + in.Name + "\""),
 		})
 	}
-	tuple := reflect.New(reflect.StructOf(structFields))
-	fld := tuple.Elem().Field(0)
-
-	return &Interface{&fld}, nil
+	return reflect.New(reflect.StructOf(structFields)), nil
 }
 
 // Size returns the number of interfaces in the slice.

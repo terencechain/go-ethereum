@@ -112,7 +112,17 @@ func TestInterfacesFromJSON(t *testing.T) {
 		t.Error(err)
 	}
 
-	_, err = exp.Pack("a", interf.object)
+	packed, err := exp.Pack("a", interf.object)
+	if err != nil {
+		t.Error(err)
+	}
+
+	defInterf, err := NewInterfacesFromJSONDefault(definition)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = exp.Unpack(defInterf.object, "a", packed[4:])
 	if err != nil {
 		t.Error(err)
 	}
