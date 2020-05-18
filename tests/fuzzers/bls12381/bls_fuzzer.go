@@ -16,24 +16,43 @@
 
 package bls
 
+import (
+	"fmt"
+
+	"github.com/ethereum/go-ethereum/common"
+)
+
 func Fuzz(data []byte) int {
-	a := new(bls12381G1Add)
-	a.Run(data)
-	b := new(bls12381G1Mul)
-	b.Run(data)
-	c := new(bls12381G1MultiExp)
-	c.Run(data)
-	d := new(bls12381G2Add)
-	d.Run(data)
-	e := new(bls12381G2Mul)
-	e.Run(data)
-	f := new(bls12381G2MultiExp)
-	f.Run(data)
-	g := new(bls12381MapG1)
-	g.Run(data)
-	h := new(bls12381MapG2)
-	h.Run(data)
-	i := new(bls12381Pairing)
-	i.Run(data)
+	data = common.FromHex(string(data))
+	promote := false
+	precompiles := []precompile{
+		new(bls12381G1Add),
+		new(bls12381G1Mul),
+		new(bls12381G1MultiExp),
+		new(bls12381G2Add),
+		new(bls12381G2Mul),
+		new(bls12381G2MultiExp),
+		new(bls12381MapG1),
+		new(bls12381MapG2),
+		new(bls12381Pairing),
+	}
+	for _, precompile := range precompiles {
+		precompile.RequiredGas(data)
+		out, err := precompile.Run(data)
+		if err == nil {
+			promote = true
+			if len(out) != 128 && len(out) != 256 {
+				panic(fmt.Sprintf("Output had strange length: %v %d", out, len(out)))
+			}
+		}
+	}
+	if promote {
+		return 1
+	}
 	return 0
+}
+
+type precompile interface {
+	RequiredGas(input []byte) uint64
+	Run(input []byte) ([]byte, error)
 }

@@ -1,0 +1,5 @@
+panic: runtime error: index out of range [128] with length 128
+github.com/ethereum/go-ethereum/tests/fuzzers/bls12381.(*bls12381G2MultiExp).RequiredGas
+github.com/ethereum/go-ethereum/tests/fuzzers/bls12381.Fuzz
+go-fuzz-dep.Main
+main.main
