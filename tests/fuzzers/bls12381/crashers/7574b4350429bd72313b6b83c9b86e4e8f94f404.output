@@ -1,0 +1,10 @@
+panic: precomp 7: errors not equal must be less than modulus must be less than modulus 
+
+goroutine 1 [running]:
+github.com/ethereum/go-ethereum/tests/fuzzers/bls12381.Fuzz(0xc00007c200, 0x80, 0x100, 0x4)
+	/home/matematik/go/src/github.com/ethereum/go-ethereum/tests/fuzzers/bls12381/bls_fuzzer.go:55 +0xa4b
+go-fuzz-dep.Main(0xc0000a4f70, 0x1, 0x1)
+	go-fuzz-dep/main.go:36 +0x1ad
+main.main()
+	github.com/ethereum/go-ethereum/tests/fuzzers/bls12381/go.fuzz.main/main.go:15 +0x52
+exit status 2

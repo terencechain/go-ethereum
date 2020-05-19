@@ -1,0 +1,10 @@
+panic: precomp 3: errors not equal invalid field element top bytes invalid field element top bytes 
+
+goroutine 1 [running]:
+github.com/ethereum/go-ethereum/tests/fuzzers/bls12381.Fuzz(0xc00007f000, 0x200, 0x400, 0x3)
+	/home/matematik/go/src/github.com/ethereum/go-ethereum/tests/fuzzers/bls12381/bls_fuzzer.go:55 +0xa4b
+go-fuzz-dep.Main(0xc0000a4f70, 0x1, 0x1)
+	go-fuzz-dep/main.go:36 +0x1ad
+main.main()
+	github.com/ethereum/go-ethereum/tests/fuzzers/bls12381/go.fuzz.main/main.go:15 +0x52
+exit status 2

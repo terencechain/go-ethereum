@@ -1,0 +1,4 @@
+panic: precomp 5: errors not equal must be less than modulus must be less than modulus 
+github.com/ethereum/go-ethereum/tests/fuzzers/bls12381.Fuzz
+go-fuzz-dep.Main
+main.main

@@ -1,0 +1,10 @@
+panic: precomp 8: Output had strange length: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0] 32
+
+goroutine 1 [running]:
+github.com/ethereum/go-ethereum/tests/fuzzers/bls12381.Fuzz(0xc000146600, 0x180, 0x300, 0x4)
+	/home/matematik/go/src/github.com/ethereum/go-ethereum/tests/fuzzers/bls12381/bls_fuzzer.go:48 +0xb9f
+go-fuzz-dep.Main(0xc00015bf70, 0x1, 0x1)
+	go-fuzz-dep/main.go:36 +0x1ad
+main.main()
+	github.com/ethereum/go-ethereum/tests/fuzzers/bls12381/go.fuzz.main/main.go:15 +0x52
+exit status 2

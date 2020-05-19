@@ -1,0 +1,4 @@
+panic: precomp 0: errors not equal invalid field element top bytes invalid field element top bytes 
+github.com/ethereum/go-ethereum/tests/fuzzers/bls12381.Fuzz
+go-fuzz-dep.Main
+main.main

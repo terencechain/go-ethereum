@@ -17,9 +17,11 @@
 package bls
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto/bls12381"
 )
 
 func Fuzz(data []byte) int {
@@ -36,14 +38,27 @@ func Fuzz(data []byte) int {
 		new(bls12381MapG2),
 		new(bls12381Pairing),
 	}
-	for _, precompile := range precompiles {
-		precompile.RequiredGas(data)
+	for i, precompile := range precompiles {
+		bls12381.NoADX = false
+		gas1 := precompile.RequiredGas(data)
 		out, err := precompile.Run(data)
 		if err == nil {
 			promote = true
 			if len(out) != 128 && len(out) != 256 {
-				panic(fmt.Sprintf("Output had strange length: %v %d", out, len(out)))
+				panic(fmt.Sprintf("precomp %d: Output had strange length: %v %d", i, out, len(out)))
 			}
+		}
+		bls12381.NoADX = true
+		gas2 := precompile.RequiredGas(data)
+		out2, err2 := precompile.Run(data)
+		if err.Error() != err2.Error() {
+			panic(fmt.Sprintf("precomp %d: errors not equal %v %v ", i, err, err2))
+		}
+		if gas1 != gas2 {
+			panic(fmt.Sprintf("precomp %d: gas not equal %v %v ", i, gas1, gas2))
+		}
+		if !bytes.Equal(out, out2) {
+			panic(fmt.Sprintf("precomp %d: output not equal %v %v ", i, out, out2))
 		}
 	}
 	if promote {

@@ -22,6 +22,8 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func TestGenerateCorpus(t *testing.T) {
@@ -47,6 +49,34 @@ func TestGenerateCorpus(t *testing.T) {
 				if err != nil {
 					t.Error(err)
 				}
+			}
+		}
+	}
+}
+
+func TestZKCryptoVectors(t *testing.T) {
+
+	type dat struct {
+		filename string
+		size     int
+	}
+	dats := []dat{
+		{"g1_uncompressed_valid_test_vectors.dat", 96},
+		{"g1_compressed_valid_test_vectors.dat", 48},
+		{"g2_uncompressed_valid_test_vectors.dat", 192},
+		{"g2_compressed_valid_test_vectors.dat", 96},
+	}
+	for _, dat := range dats {
+		data, err := ioutil.ReadFile(dat.filename)
+		if err != nil {
+			t.Error(err)
+		}
+		for i := 0; i < 1000; i++ {
+			vector := data[i*dat.size : (i+1)*dat.size]
+			filename := fmt.Sprintf("corpus/%v_%d", dat.filename, i)
+			err := ioutil.WriteFile(filename, []byte(common.ToHex(vector)), 0644)
+			if err != nil {
+				t.Error(err)
 			}
 		}
 	}
