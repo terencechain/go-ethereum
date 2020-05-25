@@ -1,0 +1,34 @@
+unexpected fault address 0x3eb1ccb5
+fatal error: fault
+[signal SIGSEGV: segmentation violation code=0x1 addr=0x3eb1ccb5 pc=0x57e944]
+
+goroutine 1 [running]:
+runtime.throw(0x61f785, 0x5)
+	runtime/panic.go:1116 +0x72 fp=0xc0000939b8 sp=0xc000093988 pc=0x431ac2
+runtime.sigpanic()
+	runtime/signal_unix.go:702 +0x3cc fp=0xc0000939e8 sp=0xc0000939b8 pc=0x44594c
+github.com/ethereum/go-ethereum/crypto/bls12381.Fallbacksub(0xc0000fc690, 0xc0000fbf20, 0xc0000fbf50)
+	/home/matematik/go/src/github.com/ethereum/go-ethereum/crypto/bls12381/arithmetic_fallback.go:171 +0xa4 fp=0xc0000939f0 sp=0xc0000939e8 pc=0x57e944
+github.com/ethereum/go-ethereum/crypto/bls12381.(*fp2).square(0xc0002892e0, 0xc0001000c0, 0xc0000fbf20)
+	/home/matematik/go/src/github.com/ethereum/go-ethereum/crypto/bls12381/fp2.go:151 +0xa9 fp=0xc000093a40 sp=0xc0000939f0 pc=0x587099
+github.com/ethereum/go-ethereum/crypto/bls12381.(*G2).Double(0xc000390fa0, 0xc0000fe480, 0xc0000fe480, 0xc0000fe480)
+	/home/matematik/go/src/github.com/ethereum/go-ethereum/crypto/bls12381/g2.go:336 +0x2f7 fp=0xc000093ac8 sp=0xc000093a40 pc=0x592567
+github.com/ethereum/go-ethereum/crypto/bls12381.(*G2).MulScalar(0xc000390fa0, 0xc0000fe240, 0xc0000fe240, 0xc0000c0200, 0xc0001002a0)
+	/home/matematik/go/src/github.com/ethereum/go-ethereum/crypto/bls12381/g2.go:376 +0x140 fp=0xc000093b20 sp=0xc000093ac8 pc=0x592a40
+github.com/ethereum/go-ethereum/crypto/bls12381.(*G2).ClearCofactor(...)
+	/home/matematik/go/src/github.com/ethereum/go-ethereum/crypto/bls12381/g2.go:383
+github.com/ethereum/go-ethereum/crypto/bls12381.(*G2).MapToCurve(0xc000390fa0, 0xc000093c30, 0x60, 0x60, 0x30, 0x30, 0x0)
+	/home/matematik/go/src/github.com/ethereum/go-ethereum/crypto/bls12381/g2.go:456 +0x256 fp=0xc000093bf0 sp=0xc000093b20 pc=0x593a26
+github.com/ethereum/go-ethereum/tests/fuzzers/bls12381.(*bls12381MapG2).Run(0x7c9e98, 0xc0000c4600, 0x80, 0x80, 0x1adb0, 0x100, 0x100, 0x0, 0x0)
+	/home/matematik/go/src/github.com/ethereum/go-ethereum/tests/fuzzers/bls12381/contracts.go:431 +0x206 fp=0xc000093ca8 sp=0xc000093bf0 pc=0x5cca16
+github.com/ethereum/go-ethereum/tests/fuzzers/bls12381.Fuzz(0x7f6548234000, 0x80, 0x80, 0x3)
+	/home/matematik/go/src/github.com/ethereum/go-ethereum/tests/fuzzers/bls12381/bls_fuzzer.go:67 +0x3b6 fp=0xc000093ea8 sp=0xc000093ca8 pc=0x5c8d66
+go-fuzz-dep.Main(0xc000093f70, 0x1, 0x1)
+	go-fuzz-dep/main.go:36 +0x1ad fp=0xc000093f58 sp=0xc000093ea8 pc=0x480fdd
+main.main()
+	github.com/ethereum/go-ethereum/tests/fuzzers/bls12381/go.fuzz.main/main.go:15 +0x52 fp=0xc000093f88 sp=0xc000093f58 pc=0x5cd132
+runtime.main()
+	runtime/proc.go:203 +0x212 fp=0xc000093fe0 sp=0xc000093f88 pc=0x434142
+runtime.goexit()
+	runtime/asm_amd64.s:1373 +0x1 fp=0xc000093fe8 sp=0xc000093fe0 pc=0x45ead1
+exit status 2

@@ -49,15 +49,15 @@ func Fuzz(data []byte) int {
 			switch i {
 			case 0, 1, 2, 6:
 				if len(out) != 128 {
-					panic(fmt.Sprintf("precomp %d: Output had strange length: %v %d", i, out, len(out)))
+					panic(fmt.Sprintf("precomp %d: Output had strange length: %x %d", i, out, len(out)))
 				}
 			case 3, 4, 5, 7:
 				if len(out) != 256 {
-					panic(fmt.Sprintf("precomp %d: Output had strange length: %v %d", i, out, len(out)))
+					panic(fmt.Sprintf("precomp %d: Output had strange length: %x %d", i, out, len(out)))
 				}
 			case 8:
 				if len(out) != 32 {
-					panic(fmt.Sprintf("precomp %d: Output had strange length: %v %d", i, out, len(out)))
+					panic(fmt.Sprintf("precomp %d: Output had strange length: %x %d", i, out, len(out)))
 				}
 			}
 		}
@@ -72,7 +72,7 @@ func Fuzz(data []byte) int {
 			panic(fmt.Sprintf("precomp %d: gas not equal %v %v ", i, gas1, gas2))
 		}
 		if !bytes.Equal(out, out2) {
-			panic(fmt.Sprintf("precomp %d: output not equal %v %v ", i, out, out2))
+			panic(fmt.Sprintf("precomp %d: output not equal %x %x ", i, out, out2))
 		}
 		bls12381.NoADX = false
 		bls12381.Fallback = true
@@ -85,11 +85,11 @@ func Fuzz(data []byte) int {
 			panic(fmt.Sprintf("precomp %d: fallback: gas not equal %v %v ", i, gas1, gas3))
 		}
 		if !bytes.Equal(out, out3) {
-			panic(fmt.Sprintf("precomp %d: fallback: output not equal %v %v ", i, out, out3))
+			panic(fmt.Sprintf("precomp %d: fallback: output not equal %x %x ", i, out, out3))
 		}
 	}
 	if !bytes.Equal(data, cpy) {
-		panic(fmt.Sprintf("someone modified data: %v %v", data, cpy))
+		panic(fmt.Sprintf("someone modified data: %x %x", data, cpy))
 	}
 	if promote {
 		return 1

@@ -17,14 +17,17 @@
 package bls
 
 import (
+	"encoding/binary"
 	"encoding/csv"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/bls12381"
+	"github.com/influxdata/influxdb/pkg/testing/assert"
 )
 
 func TestGenerateCorpus(t *testing.T) {
@@ -83,12 +86,7 @@ func TestZKCryptoVectors(t *testing.T) {
 	}
 }
 
-func TestG2(t *testing.T) {
-	input, err := ioutil.ReadFile("crashers/6bfad3af42250a2f5c551148439c85d82dbc5f46")
-	if err != nil {
-		t.Error(err)
-	}
-
+func testPrec(t *testing.T, input []byte) {
 	precompiles := []precompile{
 		new(bls12381G1Add),
 		new(bls12381G1Mul),
@@ -104,12 +102,38 @@ func TestG2(t *testing.T) {
 	for _, prec := range precompiles {
 		bls12381.NoADX = false
 		bls12381.Fallback = false
-		prec.Run(input)
+		a, _ := prec.Run(input)
 		bls12381.NoADX = true
 		bls12381.Fallback = false
-		prec.Run(input)
+		b, _ := prec.Run(input)
 		bls12381.NoADX = false
 		bls12381.Fallback = true
-		prec.Run(input)
+		c, _ := prec.Run(input)
+		assert.Equal(t, a, b)
+		assert.Equal(t, b, c)
+	}
+}
+
+func TestG2(t *testing.T) {
+
+	dir, err := ioutil.ReadDir("crashers")
+	if err != nil {
+		t.Error(err)
+	}
+	for _, info := range dir {
+		name := info.Name()
+		var input []byte
+		file, err := os.Open("crashers/" + name)
+		if err != nil {
+			t.Error(err)
+		}
+		if strings.HasSuffix(name, ".output") || strings.HasSuffix(name, ".quoted") {
+			in, err := ioutil.ReadFile("crashers/" + name)
+			assert.NoError(t, err)
+			input = in
+		} else {
+			assert.NoError(t, binary.Read(file, binary.LittleEndian, input))
+			testPrec(t, input)
+		}
 	}
 }

@@ -1,0 +1,10 @@
+fatal error: unknown caller pc
+runtime.systemstack_switch
+runtime.addOneOpenDeferFrame
+panic
+runtime.panicmem
+runtime.sigpanic
+github.com/ethereum/go-ethereum/crypto/bls12381.(*G1).IsZero
+github.com/ethereum/go-ethereum/crypto/bls12381.(*G1).Double
+runtime: unexpected return pc for github.com/ethereum/go-ethereum/crypto/bls12381.
+github.com/ethereum/go-ethereum/crypto/bls12381.(*G1).MulScalar
