@@ -14,8 +14,8 @@ package secp256k1
 #define USE_SCALAR_8X32
 #define USE_SCALAR_INV_BUILTIN
 #define NDEBUG
-#include "./libsecp256k1/src/secp256k1.c"
-#include "./libsecp256k1/src/modules/recovery/main_impl.h"
+#include "/home/matematik/go/src/github.com/ethereum/go-ethereum/crypto/secp256k1/libsecp256k1/src/secp256k1.c"
+#include "/home/matematik/go/src/github.com/ethereum/go-ethereum/crypto/secp256k1/libsecp256k1/src/modules/recovery/main_impl.h"
 #include "ext.h"
 
 typedef void (*callbackFunc) (const char* msg, void* data);

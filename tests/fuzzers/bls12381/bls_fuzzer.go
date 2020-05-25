@@ -20,12 +20,10 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/bls12381"
 )
 
 func Fuzz(data []byte) int {
-	data = common.FromHex(string(data))
 	promote := false
 	precompiles := []precompile{
 		new(bls12381G1Add),
@@ -38,20 +36,36 @@ func Fuzz(data []byte) int {
 		new(bls12381MapG2),
 		new(bls12381Pairing),
 	}
+
+	cpy := make([]byte, len(data))
+	copy(cpy, data)
 	for i, precompile := range precompiles {
 		bls12381.NoADX = false
-		gas1 := precompile.RequiredGas(data)
-		out, err := precompile.Run(data)
+		bls12381.Fallback = false
+		gas1 := precompile.RequiredGas(cpy)
+		out, err := precompile.Run(cpy)
 		if err == nil {
 			promote = true
-			if len(out) != 128 && len(out) != 256 {
-				panic(fmt.Sprintf("precomp %d: Output had strange length: %v %d", i, out, len(out)))
+			switch i {
+			case 0, 1, 2, 6:
+				if len(out) != 128 {
+					panic(fmt.Sprintf("precomp %d: Output had strange length: %v %d", i, out, len(out)))
+				}
+			case 3, 4, 5, 7:
+				if len(out) != 256 {
+					panic(fmt.Sprintf("precomp %d: Output had strange length: %v %d", i, out, len(out)))
+				}
+			case 8:
+				if len(out) != 32 {
+					panic(fmt.Sprintf("precomp %d: Output had strange length: %v %d", i, out, len(out)))
+				}
 			}
 		}
 		bls12381.NoADX = true
-		gas2 := precompile.RequiredGas(data)
-		out2, err2 := precompile.Run(data)
-		if err.Error() != err2.Error() {
+		bls12381.Fallback = false
+		gas2 := precompile.RequiredGas(cpy)
+		out2, err2 := precompile.Run(cpy)
+		if err != nil && err.Error() != err2.Error() {
 			panic(fmt.Sprintf("precomp %d: errors not equal %v %v ", i, err, err2))
 		}
 		if gas1 != gas2 {
@@ -60,6 +74,22 @@ func Fuzz(data []byte) int {
 		if !bytes.Equal(out, out2) {
 			panic(fmt.Sprintf("precomp %d: output not equal %v %v ", i, out, out2))
 		}
+		bls12381.NoADX = false
+		bls12381.Fallback = true
+		gas3 := precompile.RequiredGas(cpy)
+		out3, err3 := precompile.Run(cpy)
+		if err != nil && err.Error() != err2.Error() {
+			panic(fmt.Sprintf("precomp %d: fallback: errors not equal %v %v ", i, err, err3))
+		}
+		if gas1 != gas3 {
+			panic(fmt.Sprintf("precomp %d: fallback: gas not equal %v %v ", i, gas1, gas3))
+		}
+		if !bytes.Equal(out, out3) {
+			panic(fmt.Sprintf("precomp %d: fallback: output not equal %v %v ", i, out, out3))
+		}
+	}
+	if !bytes.Equal(data, cpy) {
+		panic(fmt.Sprintf("someone modified data: %v %v", data, cpy))
 	}
 	if promote {
 		return 1

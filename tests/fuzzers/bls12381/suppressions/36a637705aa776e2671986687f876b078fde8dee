@@ -1,4 +1,0 @@
-panic: precomp 0: errors not equal point is not on curve point is not on curve 
-github.com/ethereum/go-ethereum/tests/fuzzers/bls12381.Fuzz
-go-fuzz-dep.Main
-main.main

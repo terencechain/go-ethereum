@@ -56,6 +56,7 @@ type G2 struct {
 
 // NewG2 constructs a new G2 instance.
 func NewG2() *G2 {
+	Init()
 	return newG2(nil)
 }
 

@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto/bls12381"
 )
 
 func TestGenerateCorpus(t *testing.T) {
@@ -79,5 +80,36 @@ func TestZKCryptoVectors(t *testing.T) {
 				t.Error(err)
 			}
 		}
+	}
+}
+
+func TestG2(t *testing.T) {
+	input, err := ioutil.ReadFile("crashers/6bfad3af42250a2f5c551148439c85d82dbc5f46")
+	if err != nil {
+		t.Error(err)
+	}
+
+	precompiles := []precompile{
+		new(bls12381G1Add),
+		new(bls12381G1Mul),
+		new(bls12381G1MultiExp),
+		new(bls12381G2Add),
+		new(bls12381G2Mul),
+		new(bls12381G2MultiExp),
+		new(bls12381MapG1),
+		new(bls12381MapG2),
+		new(bls12381Pairing),
+	}
+	//fmt.Println(prec.RequiredGas(common.FromHex(input)))
+	for _, prec := range precompiles {
+		bls12381.NoADX = false
+		bls12381.Fallback = false
+		prec.Run(input)
+		bls12381.NoADX = true
+		bls12381.Fallback = false
+		prec.Run(input)
+		bls12381.NoADX = false
+		bls12381.Fallback = true
+		prec.Run(input)
 	}
 }

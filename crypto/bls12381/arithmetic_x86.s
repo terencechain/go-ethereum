@@ -4,7 +4,7 @@
 
 // addition w/ modular reduction
 // a = (a + b) % p
-TEXT ·addAssign(SB), NOSPLIT, $0-16
+TEXT ·addAssignX(SB), NOSPLIT, $0-16
 	// |
 	MOVQ a+0(FP), DI
 	MOVQ b+8(FP), SI
@@ -65,7 +65,7 @@ TEXT ·addAssign(SB), NOSPLIT, $0-16
 
 // addition w/ modular reduction
 // c = (a + b) % p
-TEXT ·add(SB), NOSPLIT, $0-24
+TEXT ·addX(SB), NOSPLIT, $0-24
 	// |
 	MOVQ a+8(FP), DI
 	MOVQ b+16(FP), SI
@@ -126,7 +126,7 @@ TEXT ·add(SB), NOSPLIT, $0-24
 
 // addition w/o reduction check
 // c = (a + b)
-TEXT ·ladd(SB), NOSPLIT, $0-24
+TEXT ·laddX(SB), NOSPLIT, $0-24
 	// |
 	MOVQ a+8(FP), DI
 	MOVQ b+16(FP), SI
@@ -161,7 +161,7 @@ TEXT ·ladd(SB), NOSPLIT, $0-24
 
 // addition w/o reduction check
 // a = a + b
-TEXT ·laddAssign(SB), NOSPLIT, $0-16
+TEXT ·laddAssignX(SB), NOSPLIT, $0-16
 	// |
 	MOVQ a+0(FP), DI
 	MOVQ b+8(FP), SI
@@ -196,7 +196,7 @@ TEXT ·laddAssign(SB), NOSPLIT, $0-16
 
 // subtraction w/ modular reduction
 // c = (a - b) % p
-TEXT ·sub(SB), NOSPLIT, $0-24
+TEXT ·subX(SB), NOSPLIT, $0-24
 	// |
 	MOVQ a+8(FP), DI
 	MOVQ b+16(FP), SI
@@ -250,7 +250,7 @@ TEXT ·sub(SB), NOSPLIT, $0-24
 
 // subtraction w/ modular reduction
 // a = (a - b) % p
-TEXT ·subAssign(SB), NOSPLIT, $0-16
+TEXT ·subAssignX(SB), NOSPLIT, $0-16
 	// |
 	MOVQ a+0(FP), DI
 	MOVQ b+8(FP), SI
@@ -304,7 +304,7 @@ TEXT ·subAssign(SB), NOSPLIT, $0-16
 
 // subtraction w/o reduction check
 // a = (a - b)
-TEXT ·lsubAssign(SB), NOSPLIT, $0-16
+TEXT ·lsubAssignX(SB), NOSPLIT, $0-16
 	// |
 	MOVQ a+0(FP), DI
 	MOVQ b+8(FP), SI
@@ -336,7 +336,7 @@ TEXT ·lsubAssign(SB), NOSPLIT, $0-16
 
 // doubling w/ reduction
 // c = (2 * a) % p
-TEXT ·double(SB), NOSPLIT, $0-16
+TEXT ·doubleX(SB), NOSPLIT, $0-16
 	// |
 	MOVQ a+8(FP), DI
 
@@ -393,7 +393,7 @@ TEXT ·double(SB), NOSPLIT, $0-16
 
 // doubling w/ reduction
 // a = (2 * a) % p
-TEXT ·doubleAssign(SB), NOSPLIT, $0-8
+TEXT ·doubleAssignX(SB), NOSPLIT, $0-8
 	// |
 	MOVQ a+0(FP), DI
 
@@ -448,7 +448,7 @@ TEXT ·doubleAssign(SB), NOSPLIT, $0-8
 
 // doubling w/o reduction
 // c = 2 * a
-TEXT ·ldouble(SB), NOSPLIT, $0-16
+TEXT ·ldoubleX(SB), NOSPLIT, $0-16
 	// |
 	MOVQ a+8(FP), DI
 
@@ -480,7 +480,7 @@ TEXT ·ldouble(SB), NOSPLIT, $0-16
 /*	 | end													*/
 
 
-TEXT ·_neg(SB), NOSPLIT, $0-16
+TEXT ·_negX(SB), NOSPLIT, $0-16
 	// |
 	MOVQ a+8(FP), DI
 

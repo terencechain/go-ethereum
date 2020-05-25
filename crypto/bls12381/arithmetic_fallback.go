@@ -1,5 +1,3 @@
-// +build !amd64 generic
-
 // Native go field arithmetic code is generated with 'goff'
 // https://github.com/ConsenSys/goff
 // Many function signature of field operations are renamed.
@@ -39,7 +37,7 @@ import (
 	"math/bits"
 )
 
-func add(z, x, y *fe) {
+func Fallbackadd(z, x, y *fe) {
 	var carry uint64
 
 	z[0], carry = bits.Add64(x[0], y[0], 0)
@@ -62,7 +60,7 @@ func add(z, x, y *fe) {
 	}
 }
 
-func addAssign(x, y *fe) {
+func FallbackaddAssign(x, y *fe) {
 	var carry uint64
 
 	x[0], carry = bits.Add64(x[0], y[0], 0)
@@ -85,7 +83,7 @@ func addAssign(x, y *fe) {
 	}
 }
 
-func ladd(z, x, y *fe) {
+func Fallbackladd(z, x, y *fe) {
 	var carry uint64
 	z[0], carry = bits.Add64(x[0], y[0], 0)
 	z[1], carry = bits.Add64(x[1], y[1], carry)
@@ -95,7 +93,7 @@ func ladd(z, x, y *fe) {
 	z[5], _ = bits.Add64(x[5], y[5], carry)
 }
 
-func laddAssign(x, y *fe) {
+func FallbackladdAssign(x, y *fe) {
 	var carry uint64
 	x[0], carry = bits.Add64(x[0], y[0], 0)
 	x[1], carry = bits.Add64(x[1], y[1], carry)
@@ -105,7 +103,7 @@ func laddAssign(x, y *fe) {
 	x[5], _ = bits.Add64(x[5], y[5], carry)
 }
 
-func double(z, x *fe) {
+func Fallbackdouble(z, x *fe) {
 	var carry uint64
 
 	z[0], carry = bits.Add64(x[0], x[0], 0)
@@ -128,7 +126,7 @@ func double(z, x *fe) {
 	}
 }
 
-func doubleAssign(z *fe) {
+func FallbackdoubleAssign(z *fe) {
 	var carry uint64
 
 	z[0], carry = bits.Add64(z[0], z[0], 0)
@@ -151,7 +149,7 @@ func doubleAssign(z *fe) {
 	}
 }
 
-func ldouble(z, x *fe) {
+func Fallbackldouble(z, x *fe) {
 	var carry uint64
 
 	z[0], carry = bits.Add64(x[0], x[0], 0)
@@ -162,7 +160,7 @@ func ldouble(z, x *fe) {
 	z[5], _ = bits.Add64(x[5], x[5], carry)
 }
 
-func sub(z, x, y *fe) {
+func Fallbacksub(z, x, y *fe) {
 	var b uint64
 	z[0], b = bits.Sub64(x[0], y[0], 0)
 	z[1], b = bits.Sub64(x[1], y[1], b)
@@ -181,7 +179,7 @@ func sub(z, x, y *fe) {
 	}
 }
 
-func subAssign(z, x *fe) {
+func FallbacksubAssign(z, x *fe) {
 	var b uint64
 	z[0], b = bits.Sub64(z[0], x[0], 0)
 	z[1], b = bits.Sub64(z[1], x[1], b)
@@ -200,7 +198,7 @@ func subAssign(z, x *fe) {
 	}
 }
 
-func lsubAssign(z, x *fe) {
+func FallbacklsubAssign(z, x *fe) {
 	var b uint64
 	z[0], b = bits.Sub64(z[0], x[0], 0)
 	z[1], b = bits.Sub64(z[1], x[1], b)
@@ -210,7 +208,7 @@ func lsubAssign(z, x *fe) {
 	z[5], b = bits.Sub64(z[5], x[5], b)
 }
 
-func neg(z *fe, x *fe) {
+func Fallbackneg(z *fe, x *fe) {
 	if x.isZero() {
 		z.zero()
 		return
@@ -224,7 +222,7 @@ func neg(z *fe, x *fe) {
 	z[5], _ = bits.Sub64(1873798617647539866, x[5], borrow)
 }
 
-func mul(z, x, y *fe) {
+func Fallbackmul(z, x, y *fe) {
 	var t [6]uint64
 	var c [3]uint64
 	{
@@ -343,7 +341,7 @@ func mul(z, x, y *fe) {
 	}
 }
 
-func mulAssign(z, x *fe) {
+func FallbackmulAssign(z, x *fe) {
 
 	var t [6]uint64
 	var c [3]uint64
@@ -463,7 +461,7 @@ func mulAssign(z, x *fe) {
 	}
 }
 
-func square(z, x *fe) {
+func Fallbacksquare(z, x *fe) {
 
 	var p [6]uint64
 

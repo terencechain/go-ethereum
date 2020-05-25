@@ -53,6 +53,7 @@ type G1 struct {
 
 // NewG1 constructs a new G1 instance.
 func NewG1() *G1 {
+	Init()
 	t := newTempG1()
 	return &G1{t}
 }
