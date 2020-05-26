@@ -18,7 +18,7 @@ package bls12381
 
 var isX86CharacteristicSet bool = false
 var NoADX = false
-var Fallback = false
+var Fallback = true
 
 func Init() {
 	if NoADX {

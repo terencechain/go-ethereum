@@ -87,6 +87,15 @@ func Fuzz(data []byte) int {
 		if !bytes.Equal(out, out3) {
 			panic(fmt.Sprintf("precomp %d: fallback: output not equal %x %x ", i, out, out3))
 		}
+		/*
+			// Shamatars library
+			out4, err4 := call(i, cpy)
+			if err != nil && err.Error() != err4.Error() {
+				panic(fmt.Sprintf("precomp %d: fallback: errors not equal %v %v ", i, err, err3))
+			}
+			if !bytes.Equal(out, out4) {
+				panic(fmt.Sprintf("precomp %d: fallback: output not equal %x %x ", i, out, out3))
+			}*/
 	}
 	if !bytes.Equal(data, cpy) {
 		panic(fmt.Sprintf("someone modified data: %x %x", data, cpy))
