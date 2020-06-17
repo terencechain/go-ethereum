@@ -184,11 +184,7 @@ func (tx *Transaction) Value() *big.Int  { return new(big.Int).Set(tx.data.Amoun
 func (tx *Transaction) Nonce() uint64    { return tx.data.AccountNonce }
 func (tx *Transaction) CheckNonce() bool { return true }
 
-func (tx *Transaction) CmpGasPrice(other *Transaction) int {
-	return tx.data.Price.Cmp(other.data.Price)
-}
-
-func (tx *Transaction) CmpGasPriceInt(other *big.Int) int {
+func (tx *Transaction) GasPriceIntCmp(other *big.Int) int {
 	return tx.data.Price.Cmp(other)
 }
 
