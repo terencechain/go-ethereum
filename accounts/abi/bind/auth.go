@@ -35,7 +35,7 @@ import (
 // NewTransactor is a utility method to easily create a transaction signer from
 // an encrypted json key stream and the associated passphrase.
 //
-// WARNING: NewTransactor has been deprecated in favour of NewTransactorWithChainID.
+// Deprecated: Use NewTransactorWithChainID instead.
 func NewTransactor(keyin io.Reader, passphrase string) (*TransactOpts, error) {
 	log.Warn("WARNING: NewTransactor has been deprecated in favour of NewTransactorWithChainID")
 	json, err := ioutil.ReadAll(keyin)
@@ -52,7 +52,7 @@ func NewTransactor(keyin io.Reader, passphrase string) (*TransactOpts, error) {
 // NewKeyStoreTransactor is a utility method to easily create a transaction signer from
 // an decrypted key from a keystore.
 //
-// WARNING: NewKeyStoreTransactor has been deprecated in favour of NewTransactorWithChainID.
+// Deprecated: Use NewKeyStoreTransactorWithChainID instead.
 func NewKeyStoreTransactor(keystore *keystore.KeyStore, account accounts.Account) (*TransactOpts, error) {
 	log.Warn("WARNING: NewKeyStoreTransactor has been deprecated in favour of NewTransactorWithChainID")
 	signer := types.HomesteadSigner{}
@@ -74,7 +74,7 @@ func NewKeyStoreTransactor(keystore *keystore.KeyStore, account accounts.Account
 // NewKeyedTransactor is a utility method to easily create a transaction signer
 // from a single private key.
 //
-// WARNING: NewKeyedTransactor has been deprecated in favour of NewKeyedTransactorWithChainID.
+// Deprecated: Use NewKeyedTransactorWithChainID instead.
 func NewKeyedTransactor(key *ecdsa.PrivateKey) *TransactOpts {
 	log.Warn("WARNING: NewKeyedTransactor has been deprecated in favour of NewKeyedTransactorWithChainID")
 	keyAddr := crypto.PubkeyToAddress(key.PublicKey)
@@ -109,7 +109,7 @@ func NewTransactorWithChainID(keyin io.Reader, passphrase string, chainID *big.I
 }
 
 // NewKeyStoreTransactorWithChainID is a utility method to easily create a transaction signer from
-// an decrypted key from a keystore
+// an decrypted key from a keystore.
 func NewKeyStoreTransactorWithChainID(keystore *keystore.KeyStore, account accounts.Account, chainID *big.Int) (*TransactOpts, error) {
 	if chainID == nil {
 		// If no chainID is explicitly passed, sign for mainnet
