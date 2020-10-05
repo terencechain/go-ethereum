@@ -120,7 +120,7 @@ func (miner *Miner) update() {
 	for {
 		select {
 		case ev := <-events.Chan():
-			if canSync {
+			if canSync && ev != nil {
 				handleDownloaderEvent(ev)
 			}
 		case addr := <-miner.startCh:
