@@ -89,28 +89,39 @@ func (miner *Miner) update() {
 
 	shouldStart := false
 	canStart := true
+	canSync := true
+
+	handleDownloaderEvent := func(ev *event.TypeMuxEvent) {
+		switch ev.Data.(type) {
+		case downloader.StartEvent:
+			wasMining := miner.Mining()
+			miner.worker.stop()
+			canStart = false
+			if wasMining {
+				// Resume mining after sync was finished
+				shouldStart = true
+				log.Info("Mining aborted due to sync")
+			}
+		case downloader.FailedEvent:
+			canStart = true
+			if shouldStart {
+				miner.SetEtherbase(miner.coinbase)
+				miner.worker.start()
+			}
+		case downloader.DoneEvent:
+			canStart = true
+			if shouldStart {
+				miner.SetEtherbase(miner.coinbase)
+				miner.worker.start()
+			}
+			canSync = false
+		}
+	}
 	for {
 		select {
 		case ev := <-events.Chan():
-			if ev == nil {
-				return
-			}
-			switch ev.Data.(type) {
-			case downloader.StartEvent:
-				wasMining := miner.Mining()
-				miner.worker.stop()
-				canStart = false
-				if wasMining {
-					// Resume mining after sync was finished
-					shouldStart = true
-					log.Info("Mining aborted due to sync")
-				}
-			case downloader.DoneEvent, downloader.FailedEvent:
-				canStart = true
-				if shouldStart {
-					miner.SetEtherbase(miner.coinbase)
-					miner.worker.start()
-				}
+			if canSync {
+				handleDownloaderEvent(ev)
 			}
 		case addr := <-miner.startCh:
 			if canStart {
