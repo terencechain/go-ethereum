@@ -51,7 +51,7 @@ func (*dummyStatedb) GetRefund() uint64 { return 1337 }
 
 func TestStoreCapture(t *testing.T) {
 	var (
-		env      = NewEVM(Context{}, &dummyStatedb{}, params.TestChainConfig, new(Config))
+		env      = NewEVM(BlockContext{}, TxContext{}, &dummyStatedb{}, params.TestChainConfig, new(Config))
 		logger   = NewStructLogger(nil)
 		mem      = NewMemory()
 		stack    = newstack()
