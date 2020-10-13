@@ -144,11 +144,7 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 		statedb.Prepare(tx.Hash(), blockHash, txIndex)
 		txContext := core.NewEVMTxContext(msg)
 
-<<<<<<< HEAD
-		evm := vm.NewEVM(vmContext, statedb, chainConfig, &vmConfig)
-=======
-		evm := vm.NewEVM(vmContext, txContext, statedb, chainConfig, vmConfig)
->>>>>>> dd073b566... all: core: split vm.Config into BlockConfig and TxConfig
+		evm := vm.NewEVM(vmContext, txContext, statedb, chainConfig, &vmConfig)
 		snapshot := statedb.Snapshot()
 		// (ret []byte, usedGas uint64, failed bool, err error)
 		msgResult, err := core.ApplyMessage(evm, msg, gaspool)
