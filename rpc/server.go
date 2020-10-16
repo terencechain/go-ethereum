@@ -20,9 +20,11 @@ import (
 	"context"
 	"io"
 	"sync/atomic"
+	"time"
 
 	mapset "github.com/deckarep/golang-set"
 	"github.com/ethereum/go-ethereum/log"
+	raidenserver "github.com/mariusvanderwijden/sharemyrpc/server"
 )
 
 const MetadataApi = "rpc"
@@ -46,11 +48,14 @@ type Server struct {
 	idgen    func() ID
 	run      int32
 	codecs   mapset.Set
+	raiden   raidenserver.Server
 }
 
 // NewServer creates a new server instance with no registered handlers.
 func NewServer() *Server {
-	server := &Server{idgen: randomIDGenerator(), codecs: mapset.NewSet(), run: 1}
+	url, token, peer string
+	rs := raidenserver.NewServer(url, token, peer)
+	server := &Server{idgen: randomIDGenerator(), codecs: mapset.NewSet(), run: 1, raiden: rs}
 	// Register the default service providing meta information about the RPC service such
 	// as the services and methods it offers.
 	rpcService := &RPCService{server}
@@ -106,6 +111,10 @@ func (s *Server) serveSingleRequest(ctx context.Context, codec ServerCodec) {
 		if err != io.EOF {
 			codec.writeJSON(ctx, errorMessage(&invalidMessageError{"parse error"}))
 		}
+		return
+	}
+	// Wait for a payment
+	if !s.raiden.PaymentReceived(ctx, 5*time.Second) {
 		return
 	}
 	if batch {
