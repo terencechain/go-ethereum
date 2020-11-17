@@ -185,6 +185,7 @@ func NewProtocolManager(config *params.ChainConfig, checkpoint *params.TrustedCh
 		n, err := manager.blockchain.InsertChain(blocks)
 		if err == nil {
 			atomic.StoreUint32(&manager.acceptTxs, 1) // Mark initial sync done on any fetcher import
+			log.Warn("adfasdf")
 		}
 		return n, err
 	}
@@ -809,7 +810,9 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			}
 			p.MarkTransaction(tx.Hash())
 		}
-		pm.txFetcher.Enqueue(p.id, txs, msg.Code == PooledTransactionsMsg)
+		if err := pm.txFetcher.Enqueue(p.id, txs, msg.Code == PooledTransactionsMsg); err != nil {
+			log.Warn("Enqeuing transactions failed", "error", err)
+		}
 
 	default:
 		return errResp(ErrInvalidMsgCode, "%v", msg.Code)
