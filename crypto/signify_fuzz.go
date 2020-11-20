@@ -47,6 +47,8 @@ func Fuzz(data []byte) int {
 	if err = tmpFile.Close(); err != nil {
 		panic(err)
 	}
+	var untrustedComment string
+	var trustedComment string
 
 	err = SignifySignFile(tmpFile.Name(), tmpFile.Name()+".sig", testSecKey, "clé", "croissants")
 	if err != nil {
@@ -118,6 +120,9 @@ func getKey(fileS string) (string, error) {
 func createKeyPair() (string, string) {
 	// Create key and put it in correct format
 	tmpKey, err := ioutil.TempFile("", "")
+	defer os.Remove(tmpKey.Name())
+	defer os.Remove(tmpKey.Name() + ".pub")
+	defer os.Remove(tmpKey.Name() + ".sec")
 	cmd := exec.Command("signify", "-G", "-n", "-p", tmpKey.Name()+".pub", "-s", tmpKey.Name()+".sec")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		panic(fmt.Sprintf("could not verify the file: %v, output: \n%s", err, output))
