@@ -201,9 +201,3 @@ func TestSignifyTrustedCommentEmpty(t *testing.T) {
 		}
 	}
 }
-
-func TestFuzz(t *testing.T) {
-	b := []byte("5ac635d8aa0]00000000" +
-		"0000000000000")
-	Fuzz(b)
-}
