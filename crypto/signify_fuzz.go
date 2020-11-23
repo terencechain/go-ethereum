@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// +build gofuzz test
-
 package crypto
 
 import (
@@ -54,12 +52,14 @@ func Fuzz(data []byte) int {
 	f := fuzz.NewFromGoFuzz(data)
 	f.Fuzz(&untrustedComment)
 	f.Fuzz(&trustedComment)
+	fmt.Printf("untrusted: %v\n", untrustedComment)
+	fmt.Printf("trusted: %v\n", trustedComment)
 
 	err = SignifySignFile(tmpFile.Name(), tmpFile.Name()+".sig", testSecKey, untrustedComment, trustedComment)
 	if err != nil {
 		panic(err)
 	}
-	defer os.Remove(tmpFile.Name() + ".sig")
+	//defer os.Remove(tmpFile.Name() + ".sig")
 
 	signify := "signify"
 	path := os.Getenv("SIGNIFY")
