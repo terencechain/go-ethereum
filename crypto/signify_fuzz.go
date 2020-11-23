@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// +build gofuzz
+// +build gofuzz test
 
 package crypto
 
@@ -27,6 +27,7 @@ import (
 	"os/exec"
 	"runtime"
 
+	fuzz "github.com/google/gofuzz"
 	"github.com/jedisct1/go-minisign"
 )
 
@@ -47,19 +48,29 @@ func Fuzz(data []byte) int {
 	if err = tmpFile.Close(); err != nil {
 		panic(err)
 	}
+	// Fuzz comments
 	var untrustedComment string
 	var trustedComment string
+	f := fuzz.NewFromGoFuzz(data)
+	f.Fuzz(&untrustedComment)
+	f.Fuzz(&trustedComment)
 
-	err = SignifySignFile(tmpFile.Name(), tmpFile.Name()+".sig", testSecKey, "clé", "croissants")
+	err = SignifySignFile(tmpFile.Name(), tmpFile.Name()+".sig", testSecKey, untrustedComment, trustedComment)
 	if err != nil {
 		panic(err)
 	}
 	defer os.Remove(tmpFile.Name() + ".sig")
 
+	signify := "signify"
+	path := os.Getenv("SIGNIFY")
+	if path != "" {
+		signify = path
+	}
+
 	// if signify-openbsd is present, check the signature.
 	// signify-openbsd will be present in CI.
 	if runtime.GOOS == "linux" {
-		cmd := exec.Command("which", "signify")
+		cmd := exec.Command("which", signify)
 		if err = cmd.Run(); err == nil {
 			// Write the public key into the file to pass it as
 			// an argument to signify-openbsd
@@ -73,7 +84,7 @@ func Fuzz(data []byte) int {
 			pubKeyFile.WriteString(testPubKey)
 			pubKeyFile.WriteString("\n")
 
-			cmd := exec.Command("signify", "-V", "-p", pubKeyFile.Name(), "-x", tmpFile.Name()+".sig", "-m", tmpFile.Name())
+			cmd := exec.Command(signify, "-V", "-p", pubKeyFile.Name(), "-x", tmpFile.Name()+".sig", "-m", tmpFile.Name())
 			if output, err := cmd.CombinedOutput(); err != nil {
 				panic(fmt.Sprintf("could not verify the file: %v, output: \n%s", err, output))
 			}
