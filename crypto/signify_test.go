@@ -58,7 +58,9 @@ func TestSignify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpFile.Nat.Fatalf(resent, check the signature.
+	defer os.Remove(tmpFile.Name() + ".sig")
+
+	// if signify-openbsd is present, check the signature.
 	// signify-openbsd will be present in CI.
 	if runtime.GOOS == "linux" {
 		cmd := exec.Command("which", "signify-openbsd")
@@ -201,7 +203,7 @@ func TestSignifyTrustedCommentEmpty(t *testing.T) {
 }
 
 func TestFuzz(t *testing.T) {
-	b := []byte("00000000074Q00000000" +
-		"000000000000")
+	b := []byte("5ac635d8aa0]00000000" +
+		"0000000000000")
 	Fuzz(b)
 }
