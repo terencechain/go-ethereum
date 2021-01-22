@@ -437,7 +437,9 @@ func starvingAccountRequestHandler(t *testPeer, requestId uint64, root common.Ha
 func corruptAccountRequestHandler(t *testPeer, requestId uint64, root common.Hash, origin common.Hash, cap uint64) error {
 	hashes, accounts, proofs := createAccountRequestResponse(t, root, origin, cap)
 	if len(proofs) > 0 {
-		proofs = proofs[1:]
+		//idx := len(proofs) - 1
+		//proofs[idx][len(proofs[idx])-1] = ^proofs[idx][len(proofs[idx])-1]
+		accounts = append(accounts, make([]byte, 2))
 	}
 	if err := t.remote.OnAccounts(t, requestId, hashes, accounts, proofs); err != nil {
 		t.log.Info("remote error on delivery (as expected)", "error", err)
@@ -451,7 +453,9 @@ func corruptAccountRequestHandler(t *testPeer, requestId uint64, root common.Has
 func corruptStorageRequestHandler(t *testPeer, requestId uint64, root common.Hash, accounts []common.Hash, origin, limit []byte, max uint64) error {
 	hashes, slots, proofs := createStorageRequestResponse(t, root, accounts, origin, limit, max)
 	if len(proofs) > 0 {
-		proofs = proofs[1:]
+		//idx := len(proofs) - 1
+		//proofs[idx][len(proofs[idx])-1] = ^proofs[idx][len(proofs[idx])-1]
+		slots = append(slots, slots[len(slots)-1])
 	}
 	if err := t.remote.OnStorage(t, requestId, hashes, slots, proofs); err != nil {
 		t.log.Info("remote error on delivery (as expected)", "error", err)
@@ -836,6 +840,43 @@ func TestSyncNoStorageAndOneAccountCorruptPeer(t *testing.T) {
 		t.Fatalf("sync failed: %v", err)
 	}
 	close(done)
+}
+
+func TestSyncOnlyCorruptPeers(t *testing.T) {
+	t.Parallel()
+	cancel := make(chan struct{})
+
+	sourceAccountTrie, elems, storageTries, storageElems := makeAccountTrieWithStorage(100, 3000, true)
+
+	mkSource := func(name string, sHandler storageHandlerFunc, aHandler accountHandlerFunc) *testPeer {
+		source := newTestPeer(name, t, cancel)
+		source.accountTrie = sourceAccountTrie
+		source.accountValues = elems
+		source.storageTries = storageTries
+		source.storageValues = storageElems
+		source.storageRequestHandler = sHandler
+		source.accountRequestHandler = aHandler
+		return source
+	}
+
+	syncer := setupSyncer(
+		mkSource("corruptStorage-corruptAccount", corruptStorageRequestHandler, corruptAccountRequestHandler),
+		mkSource("goodStorage-corruptAccount", defaultStorageRequestHandler, corruptAccountRequestHandler),
+		mkSource("corruptStorage-goodAccount", corruptStorageRequestHandler, defaultAccountRequestHandler),
+		mkSource("noProofStorage-goodAccount", noProofStorageRequestHandler, defaultAccountRequestHandler),
+		mkSource("emptyStorage-goodAccount", emptyStorageRequestHandler, defaultAccountRequestHandler),
+		mkSource("goodStorage-emptyAccount", defaultStorageRequestHandler, emptyRequestAccountRangeFn),
+		mkSource("nonRespStorage-goodAccount", nonResponsiveStorageRequestHandler, defaultAccountRequestHandler),
+		//mkSource("goodStorage-nonRespAccount", defaultStorageRequestHandler, nonResponsiveRequestAccountRangeFn),
+		//mkSource("nstorage-naccount", defaultStorageRequestHandler, defaultAccountRequestHandler),
+	)
+	go func() {
+		<-time.After(3 * time.Second)
+		cancel <- struct{}{}
+	}()
+	if err := syncer.Sync(sourceAccountTrie.Hash(), cancel); err != errCancelled {
+		t.Fatalf("expected sync to be cancelled, got: %v", err)
+	}
 }
 
 // TestSyncNoStorageAndOneCodeCappedPeer has one peer which delivers code hashes
