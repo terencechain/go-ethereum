@@ -448,7 +448,13 @@ func (w *gzipResponseWriter) WriteHeader(status int) {
 }
 
 func (w *gzipResponseWriter) Write(b []byte) (int, error) {
-	return w.Writer.Write(b)
+	gz := gzPool.Get().(*gzip.Writer)
+	defer gzPool.Put(gz)
+
+	gz.Reset(w.ResponseWriter)
+	defer gz.Close()
+
+	return gz.Write(b)
 }
 
 func newGzipHandler(next http.Handler) http.Handler {
@@ -460,13 +466,7 @@ func newGzipHandler(next http.Handler) http.Handler {
 
 		w.Header().Set("Content-Encoding", "gzip")
 
-		gz := gzPool.Get().(*gzip.Writer)
-		defer gzPool.Put(gz)
-
-		gz.Reset(w)
-		defer gz.Close()
-
-		next.ServeHTTP(&gzipResponseWriter{ResponseWriter: w, Writer: gz}, r)
+		next.ServeHTTP(&gzipResponseWriter{ResponseWriter: w, Writer: nil}, r)
 	})
 }
 
