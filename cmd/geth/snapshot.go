@@ -19,6 +19,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"sort"
 	"time"
 
 	"github.com/ethereum/go-ethereum/cmd/utils"
@@ -143,6 +144,21 @@ to traverse-state, but the check granularity is smaller.
 
 It's also usable without snapshot enabled.
 `,
+			},
+			{
+				Name:      "topAccounts",
+				Usage:     "asdfasdf",
+				ArgsUsage: "<root>",
+				Action:    utils.MigrateFlags(top100Accounts),
+				Category:  "MISCELLANEOUS COMMANDS",
+				Flags: []cli.Flag{
+					utils.DataDirFlag,
+					utils.AncientFlag,
+					utils.RopstenFlag,
+					utils.RinkebyFlag,
+					utils.GoerliFlag,
+				},
+				Description: ``,
 			},
 		},
 	}
@@ -429,4 +445,91 @@ func parseRoot(input string) (common.Hash, error) {
 		return h, err
 	}
 	return h, nil
+}
+
+func top100Accounts(ctx *cli.Context) error {
+
+	stack, _ := makeConfigNode(ctx)
+	defer stack.Close()
+
+	chaindb := utils.MakeChainDatabase(ctx, stack, true)
+	headBlock := rawdb.ReadHeadBlock(chaindb)
+	if headBlock == nil {
+		log.Error("Failed to load head block")
+		return errors.New("no head block")
+	}
+	snaptree, err := snapshot.New(chaindb, trie.NewDatabase(chaindb), 256, headBlock.Root(), false, false, false)
+	if err != nil {
+		log.Error("Failed to open snapshot tree", "error", err)
+		return err
+	}
+	if ctx.NArg() > 1 {
+		log.Error("Too many arguments given")
+		return errors.New("too many arguments")
+	}
+	var root = headBlock.Root()
+	if ctx.NArg() == 1 {
+		root, err = parseRoot(ctx.Args()[0])
+		if err != nil {
+			log.Error("Failed to resolve state root", "error", err)
+			return err
+		}
+	}
+
+	var (
+		allAccounts int
+		allSlots    int
+		codes       int
+		lastReport  time.Time
+		start       = time.Now()
+		slotsPerAcc map[common.Hash]int
+	)
+	accIter, _ := snaptree.AccountIterator(root, common.Hash{})
+	for accIter.Next() {
+		allAccounts += 1
+		var acc state.Account
+		if err := rlp.DecodeBytes(accIter.Account(), &acc); err != nil {
+			log.Error("Invalid account encountered during traversal", "error", err)
+			return err
+		}
+		if acc.Root != emptyRoot {
+			slots := 0
+			storageIter, _ := snaptree.StorageIterator(root, accIter.Hash(), common.Hash{})
+			for storageIter.Next() {
+				slots += 1
+			}
+			allSlots += slots
+			if slots > 10000 {
+				slotsPerAcc[accIter.Hash()] = slots
+			}
+		}
+		if time.Since(lastReport) > time.Second*8 {
+			log.Info("Traversing state", "accounts", allAccounts, "slots", allSlots, "codes", codes, "elapsed", common.PrettyDuration(time.Since(start)))
+			lastReport = time.Now()
+		}
+	}
+	if accIter.Error() != nil {
+		log.Error("Failed to traverse state trie", "root", root, "error", accIter.Error())
+		return accIter.Error()
+	}
+	log.Info("State is complete", "accounts", allAccounts, "slots", allSlots, "codes", codes, "elapsed", common.PrettyDuration(time.Since(start)), "topAccounts", len(slotsPerAcc))
+	type Sort struct {
+		slots int
+		addr  common.Hash
+	}
+
+	var arr []Sort
+	for addr, slots := range slotsPerAcc {
+		arr = append(arr, Sort{slots: slots, addr: addr})
+	}
+
+	sort.Slice(arr, func(i, j int) bool {
+		return arr[i].slots > arr[j].slots
+	})
+
+	for i := 0; i < 100; i++ {
+		log.Info("Account:", "i", i, "accHash", arr[i].addr, "slots", arr[i].slots)
+	}
+
+	return nil
 }
