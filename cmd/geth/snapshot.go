@@ -487,12 +487,12 @@ func top100Accounts(ctx *cli.Context) error {
 	accIter, _ := snaptree.AccountIterator(root, common.Hash{})
 	for accIter.Next() {
 		allAccounts += 1
-		var acc state.Account
-		if err := rlp.DecodeBytes(accIter.Account(), &acc); err != nil {
+		acc, err := snapshot.FullAccount(accIter.Account())
+		if err != nil {
 			log.Error("Invalid account encountered during traversal", "error", err)
 			return err
 		}
-		if acc.Root != emptyRoot {
+		if !bytes.Equal(acc.Root, emptyRoot[:]) {
 			slots := 0
 			storageIter, _ := snaptree.StorageIterator(root, accIter.Hash(), common.Hash{})
 			for storageIter.Next() {
