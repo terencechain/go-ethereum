@@ -482,7 +482,7 @@ func top100Accounts(ctx *cli.Context) error {
 		codes       int
 		lastReport  time.Time
 		start       = time.Now()
-		slotsPerAcc map[common.Hash]int
+		slotsPerAcc = make(map[common.Hash]int)
 	)
 	accIter, _ := snaptree.AccountIterator(root, common.Hash{})
 	for accIter.Next() {
