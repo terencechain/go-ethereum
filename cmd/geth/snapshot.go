@@ -19,6 +19,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"sort"
 	"time"
 
@@ -528,7 +529,7 @@ func top100Accounts(ctx *cli.Context) error {
 	})
 
 	for i := 0; i < 100; i++ {
-		log.Info("Account:", "i", i, "accHash", arr[i].addr, "slots", arr[i].slots)
+		fmt.Printf("%d\t%s\t%d\n", i, arr[i].addr.Hex(), arr[i].slots)
 	}
 
 	return nil
