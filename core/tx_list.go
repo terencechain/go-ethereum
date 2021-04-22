@@ -49,22 +49,28 @@ func (h *nonceHeap) Pop() interface{} {
 // txSortedMap is a nonce->transaction hash map with a heap based index to allow
 // iterating over the contents in a nonce-incrementing way.
 type txSortedMap struct {
-	items map[uint64]*types.Transaction // Hash map storing the transaction data
-	index *nonceHeap                    // Heap of nonces of all the stored transactions (non-strict mode)
-	cache types.Transactions            // Cache of the transactions already sorted
+	items map[uint64]*common.Hash // Hash map storing the transaction data
+	index *nonceHeap              // Heap of nonces of all the stored transactions (non-strict mode)
+	cache types.Transactions      // Cache of the transactions already sorted
+	db    *txDB
 }
 
 // newTxSortedMap creates a new nonce-sorted transaction map.
 func newTxSortedMap() *txSortedMap {
 	return &txSortedMap{
-		items: make(map[uint64]*types.Transaction),
+		items: make(map[uint64]*common.Hash),
 		index: new(nonceHeap),
 	}
 }
 
 // Get retrieves the current transactions associated with the given nonce.
 func (m *txSortedMap) Get(nonce uint64) *types.Transaction {
-	return m.items[nonce]
+	key := m.items[nonce]
+	if key == nil {
+		return nil
+	}
+	tx, _ := m.db.Get(*key)
+	return tx
 }
 
 // Put inserts a new transaction into the map, also updating the map's nonce
@@ -74,7 +80,9 @@ func (m *txSortedMap) Put(tx *types.Transaction) {
 	if m.items[nonce] == nil {
 		heap.Push(m.index, nonce)
 	}
-	m.items[nonce], m.cache = tx, nil
+	hash := tx.Hash()
+	m.items[nonce], m.cache = &hash, nil
+	m.db.Add(tx)
 }
 
 // Forward removes all transactions from the map with a nonce lower than the
@@ -86,8 +94,15 @@ func (m *txSortedMap) Forward(threshold uint64) types.Transactions {
 	// Pop off heap items until the threshold is reached
 	for m.index.Len() > 0 && (*m.index)[0] < threshold {
 		nonce := heap.Pop(m.index).(uint64)
-		removed = append(removed, m.items[nonce])
+		hash := m.items[nonce]
 		delete(m.items, nonce)
+		if hash != nil {
+			tx, err := m.db.Remove(*hash)
+			if err != nil {
+				continue
+			}
+			removed = append(removed, tx)
+		}
 	}
 	// If we had a cached order, shift the front
 	if m.cache != nil {
@@ -125,7 +140,8 @@ func (m *txSortedMap) filter(filter func(*types.Transaction) bool) types.Transac
 	var removed types.Transactions
 
 	// Collect all the transactions to filter out
-	for nonce, tx := range m.items {
+	for nonce, hash := range m.items {
+		tx, _ := m.db.Remove(*hash)
 		if filter(tx) {
 			removed = append(removed, tx)
 			delete(m.items, nonce)
@@ -149,7 +165,9 @@ func (m *txSortedMap) Cap(threshold int) types.Transactions {
 
 	sort.Sort(*m.index)
 	for size := len(m.items); size > threshold; size-- {
-		drops = append(drops, m.items[(*m.index)[size-1]])
+		hash := m.items[(*m.index)[size-1]]
+		tx, _ := m.db.Remove(*hash)
+		drops = append(drops, tx)
 		delete(m.items, (*m.index)[size-1])
 	}
 	*m.index = (*m.index)[:threshold]
@@ -198,7 +216,9 @@ func (m *txSortedMap) Ready(start uint64) types.Transactions {
 	// Otherwise start accumulating incremental transactions
 	var ready types.Transactions
 	for next := (*m.index)[0]; m.index.Len() > 0 && (*m.index)[0] == next; next++ {
-		ready = append(ready, m.items[next])
+		hash := m.items[next]
+		tx, _ := m.db.Get(*hash)
+		ready = append(ready, tx)
 		delete(m.items, next)
 		heap.Pop(m.index)
 	}
