@@ -17,12 +17,13 @@
 package core
 
 import (
+	"io/ioutil"
 	"sort"
 	"sync"
 
-	"github.com/btcsuite/goleveldb/leveldb"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 const (
@@ -40,6 +41,22 @@ type txDB struct {
 	mu    *sync.RWMutex
 }
 
+func newTxDB(db *leveldb.DB) *txDB {
+	if db == nil {
+		var err error
+		g, _ := ioutil.TempDir("", "")
+		db, err = leveldb.OpenFile(g, nil)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return &txDB{
+		items: make(map[common.Hash]*types.Transaction),
+		db:    db,
+		mu:    new(sync.RWMutex),
+	}
+}
+
 func (t *txDB) Add(tx *types.Transaction) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -53,16 +70,17 @@ func (t *txDB) Get(hash common.Hash) (*types.Transaction, error) {
 	t.mu.RLock()
 	// retrieve from cache
 	item, ok := t.items[hash]
-	t.mu.Unlock()
+	t.mu.RUnlock()
 	if ok {
 		return item, nil
 	}
+
 	// retrieve from db
+	var tx *types.Transaction
 	val, err := t.db.Get(hash[:], nil)
 	if err != nil {
 		return nil, err
 	}
-	var tx *types.Transaction
 	if tx.UnmarshalBinary(val) != nil {
 		return nil, err
 	}
@@ -106,7 +124,9 @@ func (t *txDB) rebalance() {
 	for i := minMemoryItems; i < len(t.items); i++ {
 		tx := txs[i]
 		marshalled, _ := tx.MarshalBinary()
-		t.db.Put(tx.Hash().Bytes(), marshalled, nil)
+		if err := t.db.Put(tx.Hash().Bytes(), marshalled, nil); err != nil {
+			panic(err)
+		}
 		delete(t.items, tx.Hash())
 	}
 }

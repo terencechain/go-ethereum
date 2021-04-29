@@ -18,6 +18,7 @@ package core
 
 import (
 	"container/heap"
+	"fmt"
 	"math"
 	"math/big"
 	"sort"
@@ -60,6 +61,7 @@ func newTxSortedMap() *txSortedMap {
 	return &txSortedMap{
 		items: make(map[uint64]*common.Hash),
 		index: new(nonceHeap),
+		db:    newTxDB(nil),
 	}
 }
 
@@ -142,6 +144,9 @@ func (m *txSortedMap) filter(filter func(*types.Transaction) bool) types.Transac
 	// Collect all the transactions to filter out
 	for nonce, hash := range m.items {
 		tx, _ := m.db.Remove(*hash)
+		if tx == nil {
+			continue
+		}
 		if filter(tx) {
 			removed = append(removed, tx)
 			delete(m.items, nonce)
@@ -166,7 +171,10 @@ func (m *txSortedMap) Cap(threshold int) types.Transactions {
 	sort.Sort(*m.index)
 	for size := len(m.items); size > threshold; size-- {
 		hash := m.items[(*m.index)[size-1]]
-		tx, _ := m.db.Remove(*hash)
+		tx, err := m.db.Remove(*hash)
+		if err != nil {
+			panic(fmt.Sprintf("%v: %v", err.Error(), hash))
+		}
 		drops = append(drops, tx)
 		delete(m.items, (*m.index)[size-1])
 	}
@@ -236,7 +244,11 @@ func (m *txSortedMap) flatten() types.Transactions {
 	// If the sorting was not cached yet, create and cache it
 	if m.cache == nil {
 		m.cache = make(types.Transactions, 0, len(m.items))
-		for _, tx := range m.items {
+		for _, hash := range m.items {
+			tx, err := m.db.Get(*hash)
+			if err != nil {
+				panic(fmt.Sprintf("%v: %v", err.Error(), hash))
+			}
 			m.cache = append(m.cache, tx)
 		}
 		sort.Sort(types.TxByNonce(m.cache))
