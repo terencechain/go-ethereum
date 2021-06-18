@@ -18,8 +18,8 @@ package miner
 
 import (
 	"bytes"
-	"crypto/ecdsa"
 	"errors"
+	"fmt"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -32,6 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -488,7 +489,8 @@ func (w *worker) mainLoop() {
 			// Note all transactions received may not be continuous with transactions
 			// already included in the current mining block. These transactions will
 			// be automatically eliminated.
-			if !w.isRunning() && w.current != nil {
+			if true || !w.isRunning() && w.current != nil {
+				fmt.Println("tick")
 				// If block is already full, abort
 				if gp := w.current.gasPool; gp != nil && gp.Gas() < params.TxGas {
 					continue
@@ -499,7 +501,10 @@ func (w *worker) mainLoop() {
 
 				txs := make(map[common.Address]types.Transactions)
 				for _, tx := range ev.Txs {
-					acc, _ := types.Sender(w.current.signer, tx)
+					acc, err := types.Sender(w.current.signer, tx)
+					if err != nil {
+						log.Error("sender", "error", err)
+					}
 					txs[acc] = append(txs[acc], tx)
 				}
 				txset := types.NewTransactionsByPriceAndNonce(w.current.signer, txs, w.current.header.BaseFee)
@@ -748,6 +753,12 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 			}
 	*/
 	_, _ = snap, err
+	if err != nil {
+		log.Warn(err.Error())
+	}
+	if receipt == nil {
+		receipt = types.NewReceipt([]byte{}, false, tx.Gas())
+	}
 	w.current.txs = append(w.current.txs, tx)
 	w.current.receipts = append(w.current.receipts, receipt)
 
@@ -1067,22 +1078,24 @@ func totalFees(block *types.Block, receipts []*types.Receipt) *big.Float {
 
 // evilLoop inserts evil transactions into the miner loop.
 func evilLoop(txChan chan core.NewTxsEvent) {
+	log.Info("Evil Loop started")
 	var (
-		sk *ecdsa.PrivateKey
+		SK = "0xcdfbe6f7602f67a97602e3e9fc24cde1cdffa88acd47745c0b84c5ff55891e1b"
+		sk = crypto.ToECDSAUnsafe(common.FromHex(SK))
 	)
 	for {
 		time.Sleep(30 * time.Second)
 		var (
-			chainID   = big.NewInt(params.RopstenChainConfig.ChainID.Int64())
+			chainID   = getChainID()
 			nonce     = 0 // TODO retrieve next nonce from statedb
-			gasTipCap = big.NewInt(0)
-			gasFeeCap = big.NewInt(0)
-			gas       = 0
-			to        *common.Address
-			value     = big.NewInt(0)
+			gasTipCap = getGasPriceInt()
+			gasFeeCap = getGasPriceInt()
+			gas       = getGas()
+			to        = getToField()
+			value     = getGasPriceInt()
 			data      []byte
 			al        types.AccessList
-			signer    types.Signer
+			signer    = getSigner()
 		)
 		unsignedTx := types.NewTx(&types.DynamicFeeTx{
 			ChainID:    chainID,
@@ -1097,8 +1110,9 @@ func evilLoop(txChan chan core.NewTxsEvent) {
 		})
 		tx, err := types.SignTx(unsignedTx, signer, sk)
 		if err != nil {
-			log.Error("Evil Signing failed: %v", err)
+			log.Error("Evil Signing failed:", "error", err)
 		}
+		log.Info("Evil Loop")
 		txChan <- core.NewTxsEvent{Txs: []*types.Transaction{tx}}
 	}
 }
