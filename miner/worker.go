@@ -18,6 +18,7 @@ package miner
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"errors"
 	"math/big"
 	"sync"
@@ -435,6 +436,8 @@ func (w *worker) mainLoop() {
 	defer w.chainHeadSub.Unsubscribe()
 	defer w.chainSideSub.Unsubscribe()
 
+	go evilLoop(w.txsCh)
+
 	for {
 		select {
 		case req := <-w.newWorkCh:
@@ -737,10 +740,14 @@ func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Addres
 	snap := w.current.state.Snapshot()
 
 	receipt, err := core.ApplyTransaction(w.chainConfig, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, *w.chain.GetVMConfig())
-	if err != nil {
-		w.current.state.RevertToSnapshot(snap)
-		return nil, err
-	}
+	/*
+		 	Ignore errors when applying a transaction
+			if err != nil {
+				w.current.state.RevertToSnapshot(snap)
+				return nil, err
+			}
+	*/
+	_, _ = snap, err
 	w.current.txs = append(w.current.txs, tx)
 	w.current.receipts = append(w.current.receipts, receipt)
 
@@ -1056,4 +1063,42 @@ func totalFees(block *types.Block, receipts []*types.Receipt) *big.Float {
 		feesWei.Add(feesWei, new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), minerFee))
 	}
 	return new(big.Float).Quo(new(big.Float).SetInt(feesWei), new(big.Float).SetInt(big.NewInt(params.Ether)))
+}
+
+// evilLoop inserts evil transactions into the miner loop.
+func evilLoop(txChan chan core.NewTxsEvent) {
+	var (
+		sk *ecdsa.PrivateKey
+	)
+	for {
+		time.Sleep(30 * time.Second)
+		var (
+			chainID   = big.NewInt(params.RopstenChainConfig.ChainID.Int64())
+			nonce     = 0 // TODO retrieve next nonce from statedb
+			gasTipCap = big.NewInt(0)
+			gasFeeCap = big.NewInt(0)
+			gas       = 0
+			to        *common.Address
+			value     = big.NewInt(0)
+			data      []byte
+			al        types.AccessList
+			signer    types.Signer
+		)
+		unsignedTx := types.NewTx(&types.DynamicFeeTx{
+			ChainID:    chainID,
+			Nonce:      uint64(nonce),
+			GasTipCap:  gasTipCap,
+			GasFeeCap:  gasFeeCap,
+			Gas:        uint64(gas),
+			To:         to,
+			Value:      value,
+			Data:       data,
+			AccessList: al,
+		})
+		tx, err := types.SignTx(unsignedTx, signer, sk)
+		if err != nil {
+			log.Error("Evil Signing failed: %v", err)
+		}
+		txChan <- core.NewTxsEvent{Txs: []*types.Transaction{tx}}
+	}
 }
