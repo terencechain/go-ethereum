@@ -6,7 +6,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/params"
 )
 
 func getGasPriceInt() *big.Int {
@@ -46,17 +45,19 @@ func getToField() *common.Address {
 }
 
 func getChainID() *big.Int {
-	switch i := rand.Intn(100); {
-	case i == 99:
-		return getGasPriceInt()
-	case i < 5:
-		return big.NewInt(int64(i))
-	case i < 10:
-		return params.MainnetChainConfig.ChainID
-	default:
-		return big.NewInt(1337)
-		//return params.CalaverasChainConfig.ChainID
-	}
+	/*
+		switch i := rand.Intn(100); {
+		case i == 99:
+			return getGasPriceInt()
+		case i < 5:
+			return big.NewInt(int64(i))
+		case i < 10:
+			return params.MainnetChainConfig.ChainID
+		default:
+			return big.NewInt(1337)
+			//return params.CalaverasChainConfig.ChainID
+		}*/
+	return big.NewInt(1337)
 }
 
 func getGas() uint64 {

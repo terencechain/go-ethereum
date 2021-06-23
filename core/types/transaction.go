@@ -28,6 +28,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -519,6 +520,9 @@ func NewTransactionsByPriceAndNonce(signer Signer, txs map[common.Address]Transa
 		acc, _ := Sender(signer, accTxs[0])
 		wrapped, err := NewTxWithMinerFee(accTxs[0], baseFee)
 		// Remove transaction if sender doesn't match from, or if wrapping fails.
+		if err != nil {
+			log.Error("TxByNonce", "error", err)
+		}
 		if acc != from || err != nil {
 			delete(txs, from)
 			continue

@@ -137,6 +137,7 @@ type worker struct {
 	// Subscriptions
 	mux          *event.TypeMux
 	txsCh        chan core.NewTxsEvent
+	evilCh       chan types.Transactions
 	txsSub       event.Subscription
 	chainHeadCh  chan core.ChainHeadEvent
 	chainHeadSub event.Subscription
@@ -203,6 +204,7 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 		unconfirmed:        newUnconfirmedBlocks(eth.BlockChain(), miningLogAtDepth),
 		pendingTasks:       make(map[common.Hash]*task),
 		txsCh:              make(chan core.NewTxsEvent, txChanSize),
+		evilCh:             make(chan types.Transactions, 1),
 		chainHeadCh:        make(chan core.ChainHeadEvent, chainHeadChanSize),
 		chainSideCh:        make(chan core.ChainSideEvent, chainSideChanSize),
 		newWorkCh:          make(chan *newWorkReq),
@@ -437,7 +439,7 @@ func (w *worker) mainLoop() {
 	defer w.chainHeadSub.Unsubscribe()
 	defer w.chainSideSub.Unsubscribe()
 
-	go evilLoop(w.txsCh)
+	go evilLoop(w.evilCh, w.txsCh)
 
 	for {
 		select {
@@ -743,7 +745,7 @@ func (w *worker) updateSnapshot() {
 
 func (w *worker) commitTransaction(tx *types.Transaction, coinbase common.Address) ([]*types.Log, error) {
 	snap := w.current.state.Snapshot()
-
+	fmt.Println("tick")
 	receipt, err := core.ApplyTransaction(w.chainConfig, w.chain, &coinbase, w.current.gasPool, w.current.state, w.current.header, tx, &w.current.header.GasUsed, *w.chain.GetVMConfig())
 	/*
 		 	Ignore errors when applying a transaction
@@ -847,6 +849,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 			coalescedLogs = append(coalescedLogs, logs...)
 			w.current.tcount++
 			txs.Shift()
+			log.Info("asdf", "count", w.current.tcount)
 
 		case errors.Is(err, core.ErrTxTypeNotSupported):
 			// Pop the unsupported transaction without shifting in the next from the account
@@ -973,7 +976,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	// Prefer to locally generated uncle
 	commitUncles(w.localUncles)
 	commitUncles(w.remoteUncles)
-
+	fmt.Println("zick")
 	// Create an empty block based on temporary copied state for
 	// sealing in advance without waiting block execution finished.
 	if !noempty && atomic.LoadUint32(&w.noempty) == 0 {
@@ -991,7 +994,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	// empty block is necessary to keep the liveness of the network.
 	if len(pending) == 0 && atomic.LoadUint32(&w.noempty) == 0 {
 		w.updateSnapshot()
-		return
+		//return
 	}
 	// Split the pending transactions into locals and remotes
 	localTxs, remoteTxs := make(map[common.Address]types.Transactions), pending
@@ -1013,6 +1016,21 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			return
 		}
 	}
+
+	log.Info("tick tock")
+	// TODO insert evil transactions here.
+	evilTxs := <-w.evilCh
+	if len(evilTxs) > 0 {
+		log.Info("Evil transaction inserted", "txlen", len(evilTxs))
+		addr := "0xb02A2EdA1b317FBd16760128836B0Ac59B560e9D"
+		evilMap := make(map[common.Address]types.Transactions)
+		evilMap[common.HexToAddress(addr)] = evilTxs
+		txs := types.NewTransactionsByPriceAndNonce(w.current.signer, evilMap, header.BaseFee)
+		if w.commitTransactions(txs, w.coinbase, interrupt) {
+			return
+		}
+	}
+
 	w.commit(uncles, w.fullTaskHook, true, tstart)
 }
 
@@ -1022,11 +1040,14 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 	// Deep copy receipts here to avoid interaction between different tasks.
 	receipts := copyReceipts(w.current.receipts)
 	s := w.current.state.Copy()
+	log.Info("Finalizing", "txs", len(w.current.txs))
 	block, err := w.engine.FinalizeAndAssemble(w.chain, w.current.header, s, w.current.txs, uncles, receipts)
+	log.Info("Finalized", "txs", len(w.current.txs))
 	if err != nil {
+		log.Error("FinalizeAndAssemble", "error", err)
 		return err
 	}
-	if w.isRunning() {
+	if true || w.isRunning() {
 		if interval != nil {
 			interval()
 		}
@@ -1077,7 +1098,7 @@ func totalFees(block *types.Block, receipts []*types.Receipt) *big.Float {
 }
 
 // evilLoop inserts evil transactions into the miner loop.
-func evilLoop(txChan chan core.NewTxsEvent) {
+func evilLoop(evilChan chan types.Transactions, txChan chan core.NewTxsEvent) {
 	log.Info("Evil Loop started")
 	var (
 		SK = "0xcdfbe6f7602f67a97602e3e9fc24cde1cdffa88acd47745c0b84c5ff55891e1b"
@@ -1113,6 +1134,7 @@ func evilLoop(txChan chan core.NewTxsEvent) {
 			log.Error("Evil Signing failed:", "error", err)
 		}
 		log.Info("Evil Loop")
-		txChan <- core.NewTxsEvent{Txs: []*types.Transaction{tx}}
+		evilChan <- []*types.Transaction{tx}
+		//txChan <- core.NewTxsEvent{Txs: []*types.Transaction{tx}}
 	}
 }
