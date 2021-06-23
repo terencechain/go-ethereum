@@ -18,9 +18,13 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/cmd/utils"
@@ -151,6 +155,21 @@ It's also usable without snapshot enabled.
 				Usage:     "asdfasdf",
 				ArgsUsage: "<root>",
 				Action:    utils.MigrateFlags(top100Accounts),
+				Category:  "MISCELLANEOUS COMMANDS",
+				Flags: []cli.Flag{
+					utils.DataDirFlag,
+					utils.AncientFlag,
+					utils.RopstenFlag,
+					utils.RinkebyFlag,
+					utils.GoerliFlag,
+				},
+				Description: ``,
+			},
+			{
+				Name:      "dumpState",
+				Usage:     "asdfasdf",
+				ArgsUsage: "<root>",
+				Action:    utils.MigrateFlags(dumpStateOfAccounts),
 				Category:  "MISCELLANEOUS COMMANDS",
 				Flags: []cli.Flag{
 					utils.DataDirFlag,
@@ -532,5 +551,85 @@ func top100Accounts(ctx *cli.Context) error {
 		fmt.Printf("%d\t%s\t%d\n", i, arr[i].addr.Hex(), arr[i].slots)
 	}
 
+	return nil
+}
+
+func dumpStateOfAccounts(ctx *cli.Context) error {
+	// read the contract addresses from file
+	path := "/home/matematik/ethereum/recent_contracts.txt"
+	outPath := "/media/dump.jsonl"
+	in, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	addresses := strings.Split(string(in), "\n")
+	stack, _ := makeConfigNode(ctx)
+	defer stack.Close()
+
+	chaindb := utils.MakeChainDatabase(ctx, stack, true)
+	headBlock := rawdb.ReadHeadBlock(chaindb)
+	if headBlock == nil {
+		log.Error("Failed to load head block")
+		return errors.New("no head block")
+	}
+	snaptree, err := snapshot.New(chaindb, trie.NewDatabase(chaindb), 256, headBlock.Root(), false, false, false)
+	if err != nil {
+		log.Error("Failed to open snapshot tree", "error", err)
+		return err
+	}
+	if ctx.NArg() > 1 {
+		log.Error("Too many arguments given")
+		return errors.New("too many arguments")
+	}
+	var root = headBlock.Root()
+	if ctx.NArg() == 1 {
+		root, err = parseRoot(ctx.Args()[0])
+		if err != nil {
+			log.Error("Failed to resolve state root", "error", err)
+			return err
+		}
+	}
+
+	type account struct {
+		Addr   string
+		Keys   []string
+		Values []string
+	}
+
+	f, err := os.OpenFile(outPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	var (
+		lastReport time.Time
+		start      = time.Now()
+	)
+	for i, rawAddr := range addresses {
+		addr := common.HexToAddress(rawAddr)
+		accHash := common.BytesToHash(crypto.Keccak256(addr.Bytes()))
+		storageIter, _ := snaptree.StorageIterator(root, accHash, common.Hash{})
+		var keys []string
+		var values []string
+		for storageIter.Next() {
+			keys = append(keys, storageIter.Hash().Hex())
+			values = append(values, common.Bytes2Hex(storageIter.Slot()))
+		}
+		acc := account{Addr: addr.Hex(), Keys: keys, Values: values}
+		line, err := json.Marshal(acc)
+		if err != nil {
+			return err
+		}
+		if _, err := f.WriteString(string(line) + "\n"); err != nil {
+			return err
+		}
+
+		if time.Since(lastReport) > time.Second*8 {
+			log.Info("Traversing state", "accounts", i, "elapsed", common.PrettyDuration(time.Since(start)))
+			lastReport = time.Now()
+		}
+	}
+	log.Info("State is complete")
 	return nil
 }
