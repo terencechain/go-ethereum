@@ -240,7 +240,7 @@ func (h *handler) runEthPeer(peer *eth.Peer, handler eth.Handler) error {
 	// a uniform initialization/teardown mechanism
 	snap, err := h.peers.waitSnapExtension(peer)
 	if err != nil {
-		peer.Log().Error("Snapshot extension barrier failed", "err", err)
+		peer.Log().Error("Snapshot extension barrier failed", "err", err, "name", peer.Fullname(), "caps", peer.Caps())
 		return err
 	}
 	// TODO(karalabe): Not sure why this is needed
@@ -348,7 +348,7 @@ func (h *handler) runSnapExtension(peer *snap.Peer, handler snap.Handler) error 
 	defer h.peerWG.Done()
 
 	if err := h.peers.registerSnapExtension(peer); err != nil {
-		peer.Log().Error("Snapshot extension registration failed", "err", err)
+		peer.Log().Error("Snapshot extension barrier failed", "err", err, "name", peer.Fullname(), "caps", peer.Caps())
 		return err
 	}
 	return handler(peer)
