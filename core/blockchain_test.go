@@ -378,6 +378,45 @@ func testReorgShort(t *testing.T, full bool) {
 	testReorg(t, easy, diff, 12615120, full)
 }
 
+func TestReorgShort(t *testing.T) {
+	db, blockchain, err := newCanonical(ethash.NewFaker(), 100, true)
+	if err != nil {
+		t.Fatalf("failed to create pristine chain: %v", err)
+	}
+	defer blockchain.Stop()
+
+	// Create an easy and a harder block
+	easyBlocks, _ := GenerateChain(params.TestChainConfig, blockchain.CurrentBlock(), ethash.NewFaker(), db, 1, func(i int, b *BlockGen) {
+		b.OffsetTime(0)
+	})
+	easyBlocks[0].ReceivedAt = time.Now()
+	diffBlocks, _ := GenerateChain(params.TestChainConfig, blockchain.CurrentBlock(), ethash.NewFaker(), db, 1, func(i int, b *BlockGen) {
+		b.OffsetTime(-9)
+	})
+	diffBlocks[0].ReceivedAt = time.Now()
+
+	if _, err := blockchain.InsertChain(easyBlocks); err != nil {
+		t.Fatalf("failed to insert easy chain: %v", err)
+	}
+	if _, err := blockchain.InsertChain(diffBlocks); err != nil {
+		t.Fatalf("failed to insert difficult chain: %v", err)
+	}
+
+	// Check that the chain is valid number and link wise
+	prev := blockchain.CurrentBlock()
+	for block := blockchain.GetBlockByNumber(blockchain.CurrentBlock().NumberU64() - 1); block.NumberU64() != 0; prev, block = block, blockchain.GetBlockByNumber(block.NumberU64()-1) {
+		if prev.ParentHash() != block.Hash() {
+			t.Errorf("parent block hash mismatch: have %x, want %x", prev.ParentHash(), block.Hash())
+		}
+	}
+
+	// Make sure the chain stayed on the easy block, even though the other one was heavier
+	block := blockchain.GetBlockByNumber(blockchain.CurrentBlock().NumberU64())
+	if block.Hash() != easyBlocks[0].Hash() {
+		t.Errorf("invalid head block: have %x, want %x, heavy block %v", block.Hash(), easyBlocks[0].Hash(), diffBlocks[0].Hash())
+	}
+}
+
 func testReorg(t *testing.T, first, second []int64, td int64, full bool) {
 	// Create a pristine chain and database
 	db, blockchain, err := newCanonical(ethash.NewFaker(), 0, full)
