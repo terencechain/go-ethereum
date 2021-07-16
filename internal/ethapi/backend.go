@@ -115,6 +115,10 @@ func GetAPIs(apiBackend Backend) []rpc.API {
 			Service:   NewPublicTxPoolAPI(apiBackend),
 			Public:    true,
 		}, {
+			Namespace: "txpool",
+			Version:   "1.0",
+			Service:   NewPrivateTxPoolAPI(apiBackend),
+		}, {
 			Namespace: "debug",
 			Version:   "1.0",
 			Service:   NewPublicDebugAPI(apiBackend),

@@ -2032,3 +2032,123 @@ func toHexSlice(b [][]byte) []string {
 	}
 	return r
 }
+
+// PrivateTxPoolAPI offers and API for the transaction pool.
+// It is private because it contains heavy calls.
+type PrivateTxPoolAPI struct {
+	b Backend
+}
+
+func NewPrivateTxPoolAPI(b Backend) *PrivateTxPoolAPI {
+	return &PrivateTxPoolAPI{b}
+}
+
+type Content struct {
+	Nonce     uint64
+	To        string
+	GasFeeCap *big.Int
+	GasTipCap *big.Int
+	GasPrice  *big.Int
+	Gas       uint64
+	GasUsed   uint64
+	ExecErr   string `json:"ExecErr,omitempty"`
+}
+type ContentArr []Content
+
+type Output struct {
+	Pending        int
+	Queued         int
+	PendingSenders int
+	QueuedSenders  int
+	Pend           map[string]interface{}
+}
+
+func (p *PrivateTxPoolAPI) HeavyInspect(ctx context.Context) Output {
+	pending, queued := p.b.TxPoolContent()
+
+	minimize := func(addr *common.Address) string {
+		if addr == nil {
+			addr = &common.Address{}
+		}
+		return common.Bytes2Hex(addr[:6])
+	}
+
+	pend := make(map[string]interface{}, len(pending))
+	var pendingTxs int
+	for sender, txs := range pending {
+		pendingTxs += txs.Len()
+		minimized := minimize(&sender)
+		var cnts []Content
+		var statedb *state.StateDB
+		var header *types.Header
+		for _, tx := range txs {
+			exec, statem, headerm, err := mockCall(ctx, p.b, statedb, header, tx)
+			statedb = statem
+			header = headerm
+			var usedGas uint64
+			var errS string
+			if err == nil {
+				usedGas = exec.UsedGas
+			} else {
+				errS = err.Error()
+			}
+			cnt := Content{
+				Nonce:     tx.Nonce(),
+				To:        minimize(tx.To()),
+				GasFeeCap: tx.GasFeeCap(),
+				GasTipCap: tx.GasTipCap(),
+				GasPrice:  tx.GasPrice(),
+				Gas:       tx.Gas(),
+				GasUsed:   usedGas,
+				ExecErr:   errS,
+			}
+			cnts = append(cnts, cnt)
+		}
+		// reset statedb and header for each account
+		statedb = nil
+		header = nil
+		pend[minimized] = cnts
+	}
+
+	return Output{
+		Pending:        pendingTxs,
+		Queued:         0,
+		PendingSenders: len(pending),
+		QueuedSenders:  len(queued),
+		Pend:           pend,
+	}
+}
+
+func mockCall(ctx context.Context, b Backend, state *state.StateDB, header *types.Header, tx *types.Transaction) (*core.ExecutionResult, *state.StateDB, *types.Header, error) {
+	if state == nil || header == nil {
+		stated, headerd, err := b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
+		if stated == nil || err != nil {
+			return nil, nil, nil, err
+		}
+		state = stated
+		header = headerd
+	}
+
+	msg, err := tx.AsMessage(types.LatestSigner(b.ChainConfig()), header.BaseFee)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	evm, vmError, err := b.GetEVM(ctx, msg, state, header, &vm.Config{NoBaseFee: true})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	// Wait for the context to be done and cancel the evm. Even if the
+	// EVM has finished, cancelling may be done (repeatedly)
+	go func() {
+		<-ctx.Done()
+		evm.Cancel()
+	}()
+
+	// Execute the message.
+	gp := new(core.GasPool).AddGas(math.MaxUint64)
+	result, err := core.ApplyMessage(evm, msg, gp)
+	if err := vmError(); err != nil {
+		return nil, nil, nil, err
+	}
+	return result, state, header, err
+}

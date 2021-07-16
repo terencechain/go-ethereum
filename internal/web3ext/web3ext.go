@@ -801,6 +801,10 @@ web3._extend({
 			name: 'inspect',
 			getter: 'txpool_inspect'
 		}),
+		new web3._extend.Method({
+			name: 'heavyInspect',
+			call: 'txpool_heavyInspect'
+		}),
 		new web3._extend.Property({
 			name: 'status',
 			getter: 'txpool_status',
