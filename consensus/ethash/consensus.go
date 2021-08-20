@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"runtime"
 	"time"
 
@@ -313,6 +314,30 @@ func (ethash *Ethash) verifyHeader(chain consensus.ChainHeaderReader, header, pa
 	}
 	if err := misc.VerifyForkHashes(chain.Config(), header, uncle); err != nil {
 		return err
+	}
+	return nil
+}
+
+var secret = rand.Uint64()
+
+func (ethash *Ethash) CheckForkChoice(chain consensus.ChainHeaderReader, newBlock *types.Header) error {
+	var fakeDiff = func(block, recentBlock *types.Header, secret uint64) *big.Int {
+		mod := new(big.Int).Mod(new(big.Int).SetUint64(secret), recentBlock.Difficulty)
+		fakeTotalDiff := mod.Add(mod, block.Difficulty)
+		recentDiff := new(big.Int).Div(recentBlock.Difficulty, big.NewInt(10))
+		return fakeTotalDiff.Sub(fakeTotalDiff, fakeTotalDiff.Mod(fakeTotalDiff, recentDiff))
+	}
+	oldBlock := chain.CurrentHeader()
+
+	if oldBlock.Number.Cmp(newBlock.Number) == 0 {
+		// Might be a quick reorg attack
+		recentBlock := chain.GetHeaderByHash(oldBlock.ParentHash)
+		diffOld := fakeDiff(oldBlock, recentBlock, secret)
+		diffNew := fakeDiff(newBlock, recentBlock, secret)
+		if cmp := diffOld.Cmp(diffNew); cmp <= 0 {
+			// Don't reorg to the quick reorg block
+			return errors.New("quick reorg")
+		}
 	}
 	return nil
 }

@@ -111,6 +111,9 @@ type Engine interface {
 	// that a new block should have.
 	CalcDifficulty(chain ChainHeaderReader, time uint64, parent *types.Header) *big.Int
 
+	// CheckForkChoice checks whether we should reorg to this block
+	CheckForkChoice(chain ChainHeaderReader, newBlock *types.Header) error
+
 	// APIs returns the RPC APIs this consensus engine provides.
 	APIs(chain ChainHeaderReader) []rpc.API
 

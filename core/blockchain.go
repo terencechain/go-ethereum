@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"math/rand"
 	mrand "math/rand"
 	"sort"
 	"sync"
@@ -1696,10 +1695,13 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, er
 	it := newInsertIterator(chain, results, bc.validator)
 
 	block, err := it.next()
+	// In the case we're only importing a single block, check for quick reorgs
 	if nextBlock, _ := it.peek(); err == nil && block != nil && nextBlock == nil {
-		if err := bc.checkQuickReorg(bc.CurrentBlock(), block); err != nil {
-			// Block is a quick reorg, don't insert
-			return 0, nil
+		if bc.CurrentBlock().ReceivedAt.Before(block.ReceivedAt) {
+			if err := bc.engine.CheckForkChoice(bc, block.Header()); err != nil {
+				// Block is a quick reorg, don't insert
+				return 0, nil
+			}
 		}
 	}
 
@@ -2252,28 +2254,6 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 	if len(oldChain) > 0 {
 		for i := len(oldChain) - 1; i >= 0; i-- {
 			bc.chainSideFeed.Send(ChainSideEvent{Block: oldChain[i]})
-		}
-	}
-	return nil
-}
-
-func (bc *BlockChain) checkQuickReorg(oldBlock, newBlock *types.Block) error {
-	var fakeDiff = func(block, recentBlock *types.Block, secret uint64) *big.Int {
-		mod := new(big.Int).Mod(new(big.Int).SetUint64(secret), recentBlock.Difficulty())
-		fakeTotalDiff := mod.Add(mod, block.Difficulty())
-		recentDiff := new(big.Int).Div(recentBlock.Difficulty(), big.NewInt(10))
-		return fakeTotalDiff.Sub(fakeTotalDiff, fakeTotalDiff.Mod(fakeTotalDiff, recentDiff))
-	}
-
-	if oldBlock.NumberU64() == newBlock.NumberU64() && oldBlock.ReceivedAt.Before(newBlock.ReceivedAt) {
-		// Might be a quick reorg attack
-		secret := rand.Uint64()
-		recentBlock := bc.GetBlockByHash(oldBlock.ParentHash())
-		diffOld := fakeDiff(oldBlock, recentBlock, secret)
-		diffNew := fakeDiff(newBlock, recentBlock, secret)
-		if cmp := diffOld.Cmp(diffNew); cmp <= 0 {
-			// Don't reorg to the quick reorg block
-			return errors.New("quick reorg")
 		}
 	}
 	return nil
