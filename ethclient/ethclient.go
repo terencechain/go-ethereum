@@ -127,21 +127,6 @@ func (ec *Client) ExecutePayload(ctx context.Context, params catalystType.Execut
 	return result, err
 }
 
-// // ProduceBlock --
-//func (ec *Client) ProduceBlock(ctx context.Context, params eth.ProduceBlockParams) (*eth.ApplicationPayload, error) {
-//	var data *eth.ApplicationPayload
-//	err := ec.c.CallContext(ctx, &data, "eth2_produceBlock", params)
-//	if err == nil && data == nil {
-//		err = ethereum.NotFound
-//	}
-//	return data, err
-//}
-//
-//// InsertBlock --
-//func (ec *Client) InsertBlock(ctx context.Context, params eth.InsertBlockParams) (bool, error) {
-//	var ok bool
-//	return ok, ec.c.CallContext(ctx, &ok, "eth2_insertBlock", params)
-//}
 type rpcBlock struct {
 	Hash         common.Hash      `json:"hash"`
 	Transactions []rpcTransaction `json:"transactions"`
