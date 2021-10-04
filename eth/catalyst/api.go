@@ -34,6 +34,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth"
+	catalystType "github.com/ethereum/go-ethereum/eth/catalyst/types"
 	"github.com/ethereum/go-ethereum/les"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/node"
@@ -44,9 +45,9 @@ import (
 )
 
 var (
-	VALID          = GenericStringResponse{"VALID"}
-	INVALID        = GenericStringResponse{"INVALID"}
-	SYNCING        = GenericStringResponse{"SYNCING"}
+	VALID          = catalystType.GenericStringResponse{"VALID"}
+	INVALID        = catalystType.GenericStringResponse{"INVALID"}
+	SYNCING        = catalystType.GenericStringResponse{"SYNCING"}
 	UnknownHeader  = rpc.CustomError{Code: 4, Message: "unknown header"}
 	UnknownPayload = rpc.CustomError{Code: 5, Message: "unknown payload"}
 )
@@ -84,7 +85,7 @@ type ConsensusAPI struct {
 	eth            *eth.Ethereum
 	les            *les.LightEthereum
 	engine         consensus.Engine // engine is the post-merge consensus engine, only for block creation
-	preparedBlocks map[int]*ExecutableData
+	preparedBlocks map[int]*catalystType.ExecutableData
 }
 
 func NewConsensusAPI(eth *eth.Ethereum, les *les.LightEthereum) *ConsensusAPI {
@@ -113,7 +114,7 @@ func NewConsensusAPI(eth *eth.Ethereum, les *les.LightEthereum) *ConsensusAPI {
 		eth:            eth,
 		les:            les,
 		engine:         engine,
-		preparedBlocks: make(map[int]*ExecutableData),
+		preparedBlocks: make(map[int]*catalystType.ExecutableData),
 	}
 }
 
@@ -173,17 +174,17 @@ func (api *ConsensusAPI) makeEnv(parent *types.Block, header *types.Header) (*bl
 	return env, nil
 }
 
-func (api *ConsensusAPI) PreparePayload(params AssembleBlockParams) (*PayloadResponse, error) {
+func (api *ConsensusAPI) PreparePayload(params catalystType.AssembleBlockParams) (*catalystType.PayloadResponse, error) {
 	data, err := api.assembleBlock(params)
 	if err != nil {
 		return nil, err
 	}
 	id := len(api.preparedBlocks)
 	api.preparedBlocks[id] = data
-	return &PayloadResponse{PayloadID: uint64(id)}, nil
+	return &catalystType.PayloadResponse{PayloadID: uint64(id)}, nil
 }
 
-func (api *ConsensusAPI) GetPayload(PayloadID hexutil.Uint64) (*ExecutableData, error) {
+func (api *ConsensusAPI) GetPayload(PayloadID hexutil.Uint64) (*catalystType.ExecutableData, error) {
 	data, ok := api.preparedBlocks[int(PayloadID)]
 	if !ok {
 		return nil, &UnknownPayload
@@ -193,7 +194,7 @@ func (api *ConsensusAPI) GetPayload(PayloadID hexutil.Uint64) (*ExecutableData, 
 
 // ConsensusValidated is called to mark a block as valid, so
 // that data that is no longer needed can be removed.
-func (api *ConsensusAPI) ConsensusValidated(params ConsensusValidatedParams) error {
+func (api *ConsensusAPI) ConsensusValidated(params catalystType.ConsensusValidatedParams) error {
 	switch params.Status {
 	case VALID.Status:
 		// Finalize the transition if it's the first `FinalisedBlock` event.
@@ -213,7 +214,7 @@ func (api *ConsensusAPI) ConsensusValidated(params ConsensusValidatedParams) err
 	}
 }
 
-func (api *ConsensusAPI) ForkchoiceUpdated(params ForkChoiceParams) error {
+func (api *ConsensusAPI) ForkchoiceUpdated(params catalystType.ForkChoiceParams) error {
 	var emptyHash = common.Hash{}
 	if !bytes.Equal(params.HeadBlockHash[:], emptyHash[:]) {
 		if err := api.checkTerminalTotalDifficulty(params.HeadBlockHash); err != nil {
@@ -225,7 +226,7 @@ func (api *ConsensusAPI) ForkchoiceUpdated(params ForkChoiceParams) error {
 }
 
 // ExecutePayload creates an Eth1 block, inserts it in the chain, and returns the status of the chain.
-func (api *ConsensusAPI) ExecutePayload(params ExecutableData) (GenericStringResponse, error) {
+func (api *ConsensusAPI) ExecutePayload(params catalystType.ExecutableData) (catalystType.GenericStringResponse, error) {
 	if api.light {
 		parent := api.les.BlockChain().GetHeaderByHash(params.ParentHash)
 		if parent == nil {
@@ -268,7 +269,7 @@ func (api *ConsensusAPI) ExecutePayload(params ExecutableData) (GenericStringRes
 
 // AssembleBlock creates a new block, inserts it into the chain, and returns the "execution
 // data" required for eth2 clients to process the new block.
-func (api *ConsensusAPI) assembleBlock(params AssembleBlockParams) (*ExecutableData, error) {
+func (api *ConsensusAPI) assembleBlock(params catalystType.AssembleBlockParams) (*catalystType.ExecutableData, error) {
 	if api.light {
 		return nil, errors.New("not supported")
 	}
@@ -392,7 +393,7 @@ func decodeTransactions(enc [][]byte) ([]*types.Transaction, error) {
 	return txs, nil
 }
 
-func ExecutableDataToBlock(config *chainParams.ChainConfig, parent *types.Header, params ExecutableData) (*types.Block, error) {
+func ExecutableDataToBlock(config *chainParams.ChainConfig, parent *types.Header, params catalystType.ExecutableData) (*types.Block, error) {
 	txs, err := decodeTransactions(params.Transactions)
 	if err != nil {
 		return nil, err
@@ -429,8 +430,8 @@ func ExecutableDataToBlock(config *chainParams.ChainConfig, parent *types.Header
 	return block, nil
 }
 
-func BlockToExecutableData(block *types.Block, random common.Hash) *ExecutableData {
-	return &ExecutableData{
+func BlockToExecutableData(block *types.Block, random common.Hash) *catalystType.ExecutableData {
+	return &catalystType.ExecutableData{
 		BlockHash:     block.Hash(),
 		ParentHash:    block.ParentHash(),
 		Coinbase:      block.Coinbase(),

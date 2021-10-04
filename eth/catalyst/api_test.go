@@ -29,6 +29,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/eth"
+	catalystType "github.com/ethereum/go-ethereum/eth/catalyst/types"
 	"github.com/ethereum/go-ethereum/eth/ethconfig"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/params"
@@ -130,7 +131,7 @@ func TestEth2AssembleBlock(t *testing.T) {
 		t.Fatalf("error signing transaction, err=%v", err)
 	}
 	ethservice.TxPool().AddLocal(tx)
-	blockParams := AssembleBlockParams{
+	blockParams := catalystType.AssembleBlockParams{
 		ParentHash: blocks[9].Hash(),
 		Timestamp:  blocks[9].Time() + 5,
 	}
@@ -152,7 +153,7 @@ func TestEth2AssembleBlockWithAnotherBlocksTxs(t *testing.T) {
 
 	// Put the 10th block's tx in the pool and produce a new block
 	api.insertTransactions(blocks[9].Transactions())
-	blockParams := AssembleBlockParams{
+	blockParams := catalystType.AssembleBlockParams{
 		ParentHash: blocks[8].Hash(),
 		Timestamp:  blocks[8].Time() + 5,
 	}
@@ -171,11 +172,11 @@ func TestSetHeadBeforeTotalDifficulty(t *testing.T) {
 	defer n.Close()
 
 	api := NewConsensusAPI(ethservice, nil)
-	if err := api.ConsensusValidated(ConsensusValidatedParams{BlockHash: blocks[5].Hash(), Status: VALID.Status}); err == nil {
+	if err := api.ConsensusValidated(catalystType.ConsensusValidatedParams{BlockHash: blocks[5].Hash(), Status: VALID.Status}); err == nil {
 		t.Errorf("consensus validated before total terminal difficulty should fail")
 	}
 
-	if err := api.ForkchoiceUpdated(ForkChoiceParams{FinalizedBlockHash: blocks[5].Hash()}); err == nil {
+	if err := api.ForkchoiceUpdated(catalystType.ForkChoiceParams{FinalizedBlockHash: blocks[5].Hash()}); err == nil {
 		t.Errorf("fork choice updated before total terminal difficulty should fail")
 	}
 }
@@ -189,7 +190,7 @@ func TestEth2PrepareAndGetPayload(t *testing.T) {
 
 	// Put the 10th block's tx in the pool and produce a new block
 	api.insertTransactions(blocks[9].Transactions())
-	blockParams := AssembleBlockParams{
+	blockParams := catalystType.AssembleBlockParams{
 		ParentHash: blocks[8].Hash(),
 		Timestamp:  blocks[8].Time() + 5,
 	}
@@ -248,7 +249,7 @@ func TestEth2NewBlock(t *testing.T) {
 		tx, _ := types.SignTx(types.NewContractCreation(nonce, new(big.Int), 1000000, big.NewInt(2*params.InitialBaseFee), logCode), types.LatestSigner(ethservice.BlockChain().Config()), testKey)
 		ethservice.TxPool().AddLocal(tx)
 
-		execData, err := api.assembleBlock(AssembleBlockParams{
+		execData, err := api.assembleBlock(catalystType.AssembleBlockParams{
 			ParentHash: parent.Hash(),
 			Timestamp:  parent.Time() + 5,
 		})
@@ -268,7 +269,7 @@ func TestEth2NewBlock(t *testing.T) {
 		}
 		checkLogEvents(t, newLogCh, rmLogsCh, 0, 0)
 
-		if err := api.ForkchoiceUpdated(ForkChoiceParams{HeadBlockHash: block.Hash(), FinalizedBlockHash: block.Hash()}); err != nil {
+		if err := api.ForkchoiceUpdated(catalystType.ForkChoiceParams{HeadBlockHash: block.Hash(), FinalizedBlockHash: block.Hash()}); err != nil {
 			t.Fatalf("Failed to insert block: %v", err)
 		}
 		if ethservice.BlockChain().CurrentBlock().NumberU64() != block.NumberU64() {
@@ -285,7 +286,7 @@ func TestEth2NewBlock(t *testing.T) {
 	)
 	parent = preMergeBlocks[len(preMergeBlocks)-1]
 	for i := 0; i < 10; i++ {
-		execData, err := api.assembleBlock(AssembleBlockParams{
+		execData, err := api.assembleBlock(catalystType.AssembleBlockParams{
 			ParentHash: parent.Hash(),
 			Timestamp:  parent.Time() + 6,
 		})
@@ -304,10 +305,10 @@ func TestEth2NewBlock(t *testing.T) {
 			t.Fatalf("Chain head shouldn't be updated")
 		}
 
-		if err := api.ConsensusValidated(ConsensusValidatedParams{BlockHash: block.Hash(), Status: "VALID"}); err != nil {
+		if err := api.ConsensusValidated(catalystType.ConsensusValidatedParams{BlockHash: block.Hash(), Status: "VALID"}); err != nil {
 			t.Fatalf("Failed to insert block: %v", err)
 		}
-		if err := api.ForkchoiceUpdated(ForkChoiceParams{FinalizedBlockHash: block.Hash(), HeadBlockHash: block.Hash()}); err != nil {
+		if err := api.ForkchoiceUpdated(catalystType.ForkChoiceParams{FinalizedBlockHash: block.Hash(), HeadBlockHash: block.Hash()}); err != nil {
 			t.Fatalf("Failed to insert block: %v", err)
 		}
 		if ethservice.BlockChain().CurrentBlock().NumberU64() != block.NumberU64() {
@@ -406,7 +407,7 @@ func TestFullAPI(t *testing.T) {
 		tx, _ := types.SignTx(types.NewContractCreation(nonce, new(big.Int), 1000000, big.NewInt(2*params.InitialBaseFee), logCode), types.LatestSigner(ethservice.BlockChain().Config()), testKey)
 		ethservice.TxPool().AddLocal(tx)
 
-		params := AssembleBlockParams{
+		params := catalystType.AssembleBlockParams{
 			ParentHash:   parent.Hash(),
 			Timestamp:    parent.Time() + 1,
 			Random:       crypto.Keccak256Hash([]byte{byte(i)}),
@@ -428,11 +429,11 @@ func TestFullAPI(t *testing.T) {
 			t.Fatalf("invalid status: %v", execResp.Status)
 		}
 
-		if err := api.ConsensusValidated(ConsensusValidatedParams{BlockHash: payload.BlockHash, Status: VALID.Status}); err != nil {
+		if err := api.ConsensusValidated(catalystType.ConsensusValidatedParams{BlockHash: payload.BlockHash, Status: VALID.Status}); err != nil {
 			t.Fatalf("failed to validate consensus: %v", err)
 		}
 
-		if err := api.ForkchoiceUpdated(ForkChoiceParams{HeadBlockHash: payload.BlockHash, FinalizedBlockHash: payload.BlockHash}); err != nil {
+		if err := api.ForkchoiceUpdated(catalystType.ForkChoiceParams{HeadBlockHash: payload.BlockHash, FinalizedBlockHash: payload.BlockHash}); err != nil {
 			t.Fatalf("Failed to insert block: %v", err)
 		}
 		if ethservice.BlockChain().CurrentBlock().NumberU64() != payload.Number {

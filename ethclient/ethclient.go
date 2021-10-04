@@ -28,6 +28,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	catalystType "github.com/ethereum/go-ethereum/eth/catalyst/types"
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
@@ -94,6 +95,53 @@ func (ec *Client) BlockNumber(ctx context.Context) (uint64, error) {
 	return uint64(result), err
 }
 
+func (ec *Client) PreparePayload(ctx context.Context, params catalystType.AssembleBlockParams) (*catalystType.PayloadResponse, error) {
+	var result *catalystType.PayloadResponse
+	err := ec.c.CallContext(ctx, &result, "engine_preparePayload", params)
+	if err == nil && result == nil {
+		err = ethereum.NotFound
+	}
+	return result, err
+}
+
+func (ec *Client) GetPayload(ctx context.Context, payloadID hexutil.Uint64) (*catalystType.ExecutableData, error) {
+	var result *catalystType.ExecutableData
+	err := ec.c.CallContext(ctx, &result, "engine_getPayload", payloadID)
+	if err == nil && result == nil {
+		err = ethereum.NotFound
+	}
+	return result, err
+}
+
+func (ec *Client) ConsensusValidated(ctx context.Context, params catalystType.ConsensusValidatedParams) error {
+	return ec.c.CallContext(ctx, nil, "engine_consensusValidated", params)
+}
+
+func (ec *Client) ForkchoiceUpdated(ctx context.Context, params catalystType.ForkChoiceParams) error {
+	return ec.c.CallContext(ctx, nil, "engine_forkchoiceUpdated", params)
+}
+
+func (ec *Client) ExecutePayload(ctx context.Context, params catalystType.ExecutableData) (catalystType.GenericStringResponse, error) {
+	var result catalystType.GenericStringResponse
+	err := ec.c.CallContext(ctx, &result, "engine_executePayload", params)
+	return result, err
+}
+
+// // ProduceBlock --
+//func (ec *Client) ProduceBlock(ctx context.Context, params eth.ProduceBlockParams) (*eth.ApplicationPayload, error) {
+//	var data *eth.ApplicationPayload
+//	err := ec.c.CallContext(ctx, &data, "eth2_produceBlock", params)
+//	if err == nil && data == nil {
+//		err = ethereum.NotFound
+//	}
+//	return data, err
+//}
+//
+//// InsertBlock --
+//func (ec *Client) InsertBlock(ctx context.Context, params eth.InsertBlockParams) (bool, error) {
+//	var ok bool
+//	return ok, ec.c.CallContext(ctx, &ok, "eth2_insertBlock", params)
+//}
 type rpcBlock struct {
 	Hash         common.Hash      `json:"hash"`
 	Transactions []rpcTransaction `json:"transactions"`
