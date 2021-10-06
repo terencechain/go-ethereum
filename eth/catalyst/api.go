@@ -226,40 +226,32 @@ func (api *ConsensusAPI) ForkchoiceUpdated(params catalystType.ForkChoiceParams)
 }
 
 // ExecutePayload creates an Eth1 block, inserts it in the chain, and returns the status of the chain.
-func (api *ConsensusAPI) ExecutePayload(params catalystType.ExecutableData) (catalystType.GenericStringResponse, error) {
+func (api *ConsensusAPI) ExecutePayload(params ExecutableData) (GenericStringResponse, error) {
+	block, err := ExecutableDataToBlock(params)
+	if err != nil {
+		return INVALID, err
+	}
 	if api.light {
 		parent := api.les.BlockChain().GetHeaderByHash(params.ParentHash)
 		if parent == nil {
 			return INVALID, fmt.Errorf("could not find parent %x", params.ParentHash)
-		}
-		block, err := ExecutableDataToBlock(api.les.BlockChain().Config(), parent, params)
-		if err != nil {
-			return INVALID, err
 		}
 		if err = api.les.BlockChain().InsertHeader(block.Header()); err != nil {
 			return INVALID, err
 		}
 		return VALID, nil
 	}
-	parent := api.eth.BlockChain().GetBlockByHash(params.ParentHash)
-	if parent == nil {
-		return INVALID, fmt.Errorf("could not find parent %x", params.ParentHash)
-	}
-
-	td := api.eth.BlockChain().GetTdByHash(parent.Hash())
-	ttd := api.eth.BlockChain().Config().TerminalTotalDifficulty
-	if td.Cmp(ttd) < 0 {
-		return INVALID, fmt.Errorf("can not execute payload on top of block with low td got: %v threshold %v", td, ttd)
-	}
-	block, err := ExecutableDataToBlock(api.eth.BlockChain().Config(), parent.Header(), params)
-	if err != nil {
-		return INVALID, err
-	}
 	if !api.eth.BlockChain().HasBlock(block.ParentHash(), block.NumberU64()-1) {
 		if err := api.eth.Downloader().BeaconSync(api.eth.SyncMode(), block.Header()); err != nil {
 			return SYNCING, err
 		}
 		return SYNCING, nil
+	}
+	parent := api.eth.BlockChain().GetBlockByHash(params.ParentHash)
+	td := api.eth.BlockChain().GetTdByHash(parent.Hash())
+	ttd := api.eth.BlockChain().Config().TerminalTotalDifficulty
+	if td.Cmp(ttd) < 0 {
+		return INVALID, fmt.Errorf("can not execute payload on top of block with low td got: %v threshold %v", td, ttd)
 	}
 	if err := api.eth.BlockChain().InsertBlock(block); err != nil {
 		return INVALID, err
@@ -282,13 +274,12 @@ func (api *ConsensusAPI) assembleBlock(params catalystType.AssembleBlockParams) 
 		return nil, fmt.Errorf("cannot assemble block with unknown parent %s", params.ParentHash)
 	}
 
-	if parent.Time() >= params.Timestamp {
+	if params.Timestamp < parent.Time() {
 		return nil, fmt.Errorf("child timestamp lower than parent's: %d >= %d", parent.Time(), params.Timestamp)
 	}
 	if now := uint64(time.Now().Unix()); params.Timestamp > now+1 {
-		wait := time.Duration(params.Timestamp-now) * time.Second
-		log.Info("Producing block too far in the future", "wait", common.PrettyDuration(wait))
-		time.Sleep(wait)
+		diff := time.Duration(params.Timestamp-now) * time.Second
+		log.Warn("Producing block too far in the future", "diff", common.PrettyDuration(diff))
 	}
 	pending, err := api.eth.TxPool().Pending(true)
 	if err != nil {
@@ -393,7 +384,7 @@ func decodeTransactions(enc [][]byte) ([]*types.Transaction, error) {
 	return txs, nil
 }
 
-func ExecutableDataToBlock(config *chainParams.ChainConfig, parent *types.Header, params catalystType.ExecutableData) (*types.Block, error) {
+func ExecutableDataToBlock(params ExecutableData) (*types.Block, error) {
 	txs, err := decodeTransactions(params.Transactions)
 	if err != nil {
 		return nil, err
@@ -419,9 +410,6 @@ func ExecutableDataToBlock(config *chainParams.ChainConfig, parent *types.Header
 		BaseFee:     params.BaseFeePerGas,
 		Extra:       params.ExtraData,
 		// TODO (MariusVanDerWijden) add params.Random to header once required
-	}
-	if config.IsLondon(number) {
-		header.BaseFee = misc.CalcBaseFee(config, parent)
 	}
 	block := types.NewBlockWithHeader(header).WithBody(txs, nil /* uncles */)
 	if block.Hash() != params.BlockHash {
