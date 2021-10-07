@@ -226,7 +226,7 @@ func (api *ConsensusAPI) ForkchoiceUpdated(params catalystType.ForkChoiceParams)
 }
 
 // ExecutePayload creates an Eth1 block, inserts it in the chain, and returns the status of the chain.
-func (api *ConsensusAPI) ExecutePayload(params ExecutableData) (GenericStringResponse, error) {
+func (api *ConsensusAPI) ExecutePayload(params catalystType.ExecutableData) (catalystType.GenericStringResponse, error) {
 	block, err := ExecutableDataToBlock(params)
 	if err != nil {
 		return INVALID, err
@@ -384,7 +384,7 @@ func decodeTransactions(enc [][]byte) ([]*types.Transaction, error) {
 	return txs, nil
 }
 
-func ExecutableDataToBlock(params ExecutableData) (*types.Block, error) {
+func ExecutableDataToBlock(params catalystType.ExecutableData) (*types.Block, error) {
 	txs, err := decodeTransactions(params.Transactions)
 	if err != nil {
 		return nil, err
